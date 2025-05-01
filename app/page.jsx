@@ -1,4 +1,5 @@
 "use client";
+import Link from 'next/link';
 import React, { useState } from 'react';
 
 function App() {
@@ -11,7 +12,6 @@ function App() {
         area: '',
         city: '',
         state: '',
-        postCode: ''
     });
 
     const [tripPlan, setTripPlan] = useState(null);
@@ -57,7 +57,7 @@ function App() {
         setTripPlan(null);
 
         const payload = {
-            destination: `${formData.area}, ${formData.city}, ${formData.state} ${formData.postCode}`,
+            destination: `${formData.area}, ${formData.city}, ${formData.state}`,
             startDate: formData.startDate,
             endDate: formData.endDate,
             createdBy: formData.name
@@ -77,7 +77,7 @@ function App() {
 
             const responseData = await response.json();
             console.log('Response Data:', responseData);
-            
+
             // Check if the response contains the inserted document or just the operation result
             if (responseData.acknowledged && responseData.insertedId) {
                 // If it's just the MongoDB operation result, fetch the complete document
@@ -86,7 +86,7 @@ function App() {
                     method: 'GET',
                     headers: { 'Content-Type': 'application/json' },
                 });
-                
+
                 if (!tripResponse.ok) throw new Error('Failed to fetch created trip');
                 const tripData = await tripResponse.json();
                 alert('Trip saved successfully!');
@@ -143,8 +143,7 @@ function App() {
     };
 
     return (
-        <div>
-            <div className="flex items-center justify-center p-12">
+            <div className="flex items-center justify-center p-6">
                 <div className="mx-auto w-full max-w-[530px] bg-white">
                     <h1 className="text-3xl font-extrabold mb-5">Itinerary App</h1>
                     <form onSubmit={handleSubmit}>
@@ -273,33 +272,19 @@ function App() {
                                         />
                                     </div>
                                 </div>
-                                <div className="w-full px-3 sm:w-1/2">
-                                    <div className="mb-5">
-                                        <input
-                                            type="text"
-                                            name="postCode"
-                                            id="post-code"
-                                            placeholder="Post Code"
-                                            value={formData.postCode}
-                                            onChange={handleChange}
-                                            className="w-full rounded-md border border-[#e0e0e0] bg-white py-3 px-6 text-base font-medium text-[#6B7280] outline-none focus:border-[#6A64F1] focus:shadow-md"
-                                            required
-                                        />
-                                    </div>
-                                </div>
                             </div>
                         </div>
                         <div>
                             <button
                                 type="submit"
-                                className="hover:shadow-form w-full rounded-md bg-[#6A64F1] py-3 px-8 text-center text-base font-semibold text-white outline-none"
+                                className="hover:shadow-form w-full rounded-md bg-[#6A64F1] py-3 px-8 text-center text-base font-semibold text-white outline-none hover:bg-purple-600"
                             >
                                 Make a Plan!
                             </button>
                         </div>
                     </form>
 
-                    {/* Display the generated trip plan */}
+                    {/* Display the generated trip plan with improved destination description */}
                     {tripPlan && (
                         <div className="mt-8 p-4 border rounded-md bg-gray-50">
                             <h2 className="text-2xl font-bold">{tripPlan.title || 'Trip Details'}</h2>
@@ -307,59 +292,63 @@ function App() {
                             <p><strong>Full Name:</strong> {tripPlan.createdBy || 'N/A'}</p>
                             <p><strong>Start Date:</strong> {tripPlan.startDate}</p>
                             <p><strong>End Date:</strong> {tripPlan.endDate}</p>
-                            <p><strong>Destination:</strong> {tripPlan.destination}</p>
+
+                            {/* Enhanced destination display with AI description */}
+                            <div className="mt-3 pb-3 border-b">
+                                <p className="text-lg font-semibold">Destination: {tripPlan.destination ||
+                                    (tripPlan.days && tripPlan.days.length > 0 && tripPlan.days[0].location) ||
+                                    (tripPlan.title && tripPlan.title.includes('in') ?
+                                        tripPlan.title.split('in')[1].trim() : 'Not specified')}
+                                </p>
+
+                                {/* Extract destination description from notes or first day description */}
+                                <div className="mt-2 text-gray-700">
+                                    {tripPlan.notes ? (
+                                        <p>{tripPlan.notes}</p>
+                                    ) : tripPlan.days && tripPlan.days.length > 0 && tripPlan.days[0].activities &&
+                                        tripPlan.days[0].activities.length > 0 ? (
+                                        <p>{tripPlan.days[0].activities[0].description ||
+                                            tripPlan.days[0].activities[0].notes ||
+                                            "No destination description available"}</p>
+                                    ) : (
+                                        <p>No destination description available</p>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Display the itinerary highlights */}
+                            {tripPlan.days && tripPlan.days.length > 0 && (
+                                <div className="mt-4">
+                                    <h3 className="text-xl font-semibold">Itinerary Highlights:</h3>
+                                    <ul className="list-disc pl-5 mt-2">
+                                        {tripPlan.days.map((day, index) => (
+                                            <li key={index} className="mb-2">
+                                                <div>
+                                                    <strong>Day {day.day}:</strong> {day.location}
+                                                    {day.activities && day.activities.length > 0 && (
+                                                        <ul className="list-circle pl-5 mt-1 text-sm text-gray-600">
+                                                            {day.activities.slice(0, 2).map((activity, i) => (
+                                                                <li key={i}>{activity.title} at {activity.location}</li>
+                                                            ))}
+                                                            {day.activities.length > 2 && (
+                                                                <li>...and {day.activities.length - 2} more activities</li>
+                                                            )}
+                                                        </ul>
+                                                    )}
+                                                </div>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
                         </div>
                     )}
 
-                    {/* Fetch Trip Section */}
-                    <div className="mt-8">
-                        <h2 className="text-xl font-bold mb-4">Fetch Trip Details</h2>
-                        <div className="mb-4">
-                            <label htmlFor="fetchTripId" className="mb-2 block text-base font-medium text-[#07074D]">
-                                Trip ID
-                            </label>
-                            <input
-                                type="text"
-                                id="fetchTripId"
-                                placeholder="Enter Trip ID (e.g., trip01)"
-                                value={fetchTripId}
-                                onChange={(e) => setFetchTripId(e.target.value)}
-                                className="w-full rounded-md border border-[#e0e0e0] bg-white py-3 px-6 text-base font-medium text-[#6B7280] outline-none focus:border-[#6A64F1] focus:shadow-md"
-                            />
-                        </div>
-                        <div className="mb-4">
-                            <label htmlFor="fetchDestination" className="mb-2 block text-base font-medium text-[#07074D]">
-                                Destination
-                            </label>
-                            <input
-                                type="text"
-                                id="fetchDestination"
-                                placeholder="Enter destination (e.g., Chennai)"
-                                value={fetchDestination}
-                                onChange={(e) => setFetchDestination(e.target.value)}
-                                className="w-full rounded-md border border-[#e0e0e0] bg-white py-3 px-6 text-base font-medium text-[#6B7280] outline-none focus:border-[#6A64F1] focus:shadow-md"
-                            />
-                        </div>
-                        <button
-                            onClick={handleFetchTrip}
-                            className="hover:shadow-form w-full rounded-md bg-[#6A64F1] py-3 px-8 text-center text-base font-semibold text-white outline-none"
-                        >
-                            Fetch Trip Details
-                        </button>
-                    </div>
+                    <Link href="/getTrips">
+                        <button className='hover:shadow-form w-full rounded-md bg-red-400 py-3 px-8 text-center text-base font-semibold text-white outline-none hover:bg-amber-500 my-8'>Get Trip Details</button>
+                    </Link>
 
-                    {/* Display the fetched trip */}
-                    {fetchedTrip && (
-                        <div className="mt-8 p-4 border rounded-md bg-gray-50">
-                            <h2 className="text-2xl font-bold">{fetchedTrip.title}</h2>
-                            <p><strong>ID:</strong> {fetchedTrip._id}</p>
-                            <p><strong>Full Name:</strong> {fetchedTrip.createdBy}</p>
-                            <p><strong>Start Date:</strong> {fetchedTrip.startDate}</p>
-                            <p><strong>End Date:</strong> {fetchedTrip.endDate}</p>
-                            <p><strong>Destination:</strong> {fetchedTrip.destination}</p>
-                        </div>
-                    )}
-                </div>
+                    
             </div>
         </div>
     );
