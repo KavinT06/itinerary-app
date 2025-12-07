@@ -15,9 +15,8 @@ function App() {
     });
 
     const [tripPlan, setTripPlan] = useState(null);
-    const [fetchTripId, setFetchTripId] = useState('');
-    const [fetchDestination, setFetchDestination] = useState('');
-    const [fetchedTrip, setFetchedTrip] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -55,6 +54,8 @@ function App() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setTripPlan(null);
+        setError(null);
+        setLoading(true);
 
         const payload = {
             destination: `${formData.area}, ${formData.city}, ${formData.state}`,
@@ -70,285 +71,376 @@ function App() {
                 body: JSON.stringify(payload),
             });
 
+            const responseData = await response.json();
+
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to generate trip plan');
+                throw new Error(responseData.error || 'Failed to generate trip plan');
             }
 
-            const responseData = await response.json();
-            console.log('Response Data:', responseData);
-
-            // Check if the response contains the inserted document or just the operation result
             if (responseData.acknowledged && responseData.insertedId) {
-                // If it's just the MongoDB operation result, fetch the complete document
                 const tripId = responseData.insertedId;
-                const tripResponse = await fetch(`/api/trips/${tripId}`, {
-                    method: 'GET',
-                    headers: { 'Content-Type': 'application/json' },
-                });
-
+                const tripResponse = await fetch(`/api/trips/${tripId}`);
+                
                 if (!tripResponse.ok) throw new Error('Failed to fetch created trip');
                 const tripData = await tripResponse.json();
-                alert('Trip saved successfully!');
                 setTripPlan(tripData);
             } else {
-                // If the complete document is already included in the response
-                alert('Trip saved successfully!');
                 setTripPlan(responseData);
             }
         } catch (err) {
             console.error('Error:', err.message);
-            alert('Error: ' + err.message);
-        }
-    };
-
-    const handleFetchTrip = async () => {
-        setFetchedTrip(null);
-
-        if (fetchTripId) {
-            // Fetch by tripId
-            try {
-                const response = await fetch(`/api/trips/${fetchTripId}`, {
-                    method: 'GET',
-                    headers: { 'Content-Type': 'application/json' },
-                });
-                if (!response.ok) throw new Error('Trip not found');
-                const data = await response.json();
-                setFetchedTrip(data);
-                alert('Trip details fetched successfully!');
-            } catch (err) {
-                alert('Error: ' + err.message);
-            }
-        } else if (fetchDestination) {
-            // Fetch by destination
-            try {
-                const response = await fetch(`/api/trips?destination=${encodeURIComponent(fetchDestination)}`, {
-                    method: 'GET',
-                    headers: { 'Content-Type': 'application/json' },
-                });
-                if (!response.ok) throw new Error('Failed to fetch trips');
-                const trips = await response.json();
-                if (trips.length > 0) {
-                    setFetchedTrip(trips[0]); // Display the first matching trip
-                    alert('Trip details fetched successfully!');
-                } else {
-                    alert('No trip found for this destination');
-                }
-            } catch (err) {
-                alert('Error: ' + err.message);
-            }
-        } else {
-            alert('Please enter a Trip ID or Destination');
+            setError(err.message);
+        } finally {
+            setLoading(false);
         }
     };
 
     return (
-            <div className="flex items-center justify-center p-6">
-                <div className="mx-auto w-full max-w-[530px] bg-white">
-                    <h1 className="text-3xl font-extrabold mb-5">Itinerary App</h1>
-                    <form onSubmit={handleSubmit}>
-                        <div className="mb-5">
-                            <label htmlFor="name" className="mb-3 block text-base font-medium text-[#07074D]">
-                                Full Name
-                            </label>
-                            <input
-                                type="text"
-                                name="name"
-                                id="name"
-                                placeholder="Full Name"
-                                value={formData.name}
-                                onChange={handleChange}
-                                className="w-full rounded-md border border-[#e0e0e0] bg-white py-3 px-6 text-base font-medium text-[#6B7280] outline-none focus:border-[#6A64F1] focus:shadow-md"
-                                required
-                            />
+        <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 py-12 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-5xl mx-auto">
+                {/* Header */}
+                <div className="text-center mb-12">
+                    <div className="inline-block mb-4">
+                        <div className="flex items-center justify-center space-x-2 text-6xl">
+                            <span>✈️</span>
+                            <span>🗺️</span>
+                            <span>🌍</span>
                         </div>
-                        <div className="mb-5">
-                            <label htmlFor="phone" className="mb-3 block text-base font-medium text-[#07074D]">
-                                Phone Number
-                            </label>
-                            <input
-                                type="text"
-                                name="phone"
-                                id="phone"
-                                placeholder="Enter your phone number"
-                                value={formData.phone}
-                                onChange={handleChange}
-                                className="w-full rounded-md border border-[#e0e0e0] bg-white py-3 px-6 text-base font-medium text-[#6B7280] outline-none focus:border-[#6A64F1] focus:shadow-md"
-                            />
+                    </div>
+                    <h1 className="text-5xl font-black bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 bg-clip-text text-transparent mb-4">
+                        AI Travel Planner
+                    </h1>
+                    <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+                        Let AI craft your perfect journey with personalized itineraries
+                    </p>
+                </div>
+
+                {/* Form Card */}
+                <div className="bg-white rounded-3xl shadow-2xl p-8 md:p-12 mb-8">
+                    <form onSubmit={handleSubmit} className="space-y-8">
+                        {/* Personal Info */}
+                        <div className="space-y-6">
+                            <div className="flex items-center space-x-3 pb-4 border-b-2 border-purple-200">
+                                <span className="text-3xl">👤</span>
+                                <h2 className="text-2xl font-bold text-gray-800">Personal Information</h2>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label htmlFor="name" className="block text-sm font-semibold text-gray-700 mb-2">Full Name *</label>
+                                    <div className="relative">
+                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl">👨‍💼</span>
+                                        <input
+                                            type="text"
+                                            name="name"
+                                            id="name"
+                                            placeholder="John Doe"
+                                            value={formData.name}
+                                            onChange={handleChange}
+                                            className="w-full pl-12 pr-4 py-4 rounded-xl border-2 border-gray-200 bg-gray-50 text-gray-800 outline-none focus:border-purple-500 focus:bg-white focus:ring-4 focus:ring-purple-100 transition-all"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-2">Email *</label>
+                                    <div className="relative">
+                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl">📧</span>
+                                        <input
+                                            type="email"
+                                            name="email"
+                                            id="email"
+                                            placeholder="john@example.com"
+                                            value={formData.email}
+                                            onChange={handleChange}
+                                            className="w-full pl-12 pr-4 py-4 rounded-xl border-2 border-gray-200 bg-gray-50 text-gray-800 outline-none focus:border-purple-500 focus:bg-white focus:ring-4 focus:ring-purple-100 transition-all"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="md:col-span-2">
+                                    <label htmlFor="phone" className="block text-sm font-semibold text-gray-700 mb-2">Phone</label>
+                                    <div className="relative">
+                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl">📱</span>
+                                        <input
+                                            type="tel"
+                                            name="phone"
+                                            id="phone"
+                                            placeholder="+1 (555) 000-0000"
+                                            value={formData.phone}
+                                            onChange={handleChange}
+                                            className="w-full pl-12 pr-4 py-4 rounded-xl border-2 border-gray-200 bg-gray-50 text-gray-800 outline-none focus:border-purple-500 focus:bg-white focus:ring-4 focus:ring-purple-100 transition-all"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div className="mb-5">
-                            <label htmlFor="email" className="mb-3 block text-base font-medium text-[#07074D]">
-                                Email Address
-                            </label>
-                            <input
-                                type="email"
-                                name="email"
-                                id="email"
-                                placeholder="Enter your email"
-                                value={formData.email}
-                                onChange={handleChange}
-                                className="w-full rounded-md border border-[#e0e0e0] bg-white py-3 px-6 text-base font-medium text-[#6B7280] outline-none focus:border-[#6A64F1] focus:shadow-md"
-                                required
-                            />
+
+                        {/* Dates */}
+                        <div className="space-y-6">
+                            <div className="flex items-center space-x-3 pb-4 border-b-2 border-pink-200">
+                                <span className="text-3xl">📅</span>
+                                <h2 className="text-2xl font-bold text-gray-800">Travel Dates</h2>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label htmlFor="startDate" className="block text-sm font-semibold text-gray-700 mb-2">Departure *</label>
+                                    <div className="relative">
+                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl">🛫</span>
+                                        <input
+                                            type="date"
+                                            name="startDate"
+                                            id="startDate"
+                                            value={formData.startDate}
+                                            onChange={handleChange}
+                                            className="w-full pl-12 pr-4 py-4 rounded-xl border-2 border-gray-200 bg-gray-50 text-gray-800 outline-none focus:border-pink-500 focus:bg-white focus:ring-4 focus:ring-pink-100 transition-all"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label htmlFor="endDate" className="block text-sm font-semibold text-gray-700 mb-2">Return *</label>
+                                    <div className="relative">
+                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl">🛬</span>
+                                        <input
+                                            type="date"
+                                            name="endDate"
+                                            id="endDate"
+                                            value={formData.endDate}
+                                            onChange={handleChange}
+                                            className="w-full pl-12 pr-4 py-4 rounded-xl border-2 border-gray-200 bg-gray-50 text-gray-800 outline-none focus:border-pink-500 focus:bg-white focus:ring-4 focus:ring-pink-100 transition-all"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div className="-mx-3 flex flex-wrap">
-                            <div className="w-full px-3 sm:w-1/2">
-                                <div className="mb-5">
-                                    <label htmlFor="startDate" className="mb-3 block text-base font-medium text-[#07074D]">
-                                        Start Date
-                                    </label>
+
+                        {/* Destination */}
+                        <div className="space-y-6">
+                            <div className="flex items-center space-x-3 pb-4 border-b-2 border-blue-200">
+                                <span className="text-3xl">📍</span>
+                                <h2 className="text-2xl font-bold text-gray-800">Dream Destination</h2>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div>
+                                    <label htmlFor="area" className="block text-sm font-semibold text-gray-700 mb-2">Area *</label>
                                     <input
-                                        type="date"
-                                        name="startDate"
-                                        id="startDate"
-                                        value={formData.startDate}
+                                        type="text"
+                                        name="area"
+                                        id="area"
+                                        placeholder="e.g., Manhattan"
+                                        value={formData.area}
                                         onChange={handleChange}
-                                        className="w-full rounded-md border border-[#e0e0e0] bg-white py-3 px-6 text-base font-medium text-[#6B7280] outline-none focus:border-[#6A64F1] focus:shadow-md"
+                                        className="w-full px-4 py-4 rounded-xl border-2 border-gray-200 bg-gray-50 text-gray-800 outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all"
+                                        required
+                                    />
+                                </div>
+
+                                <div>
+                                    <label htmlFor="city" className="block text-sm font-semibold text-gray-700 mb-2">City *</label>
+                                    <input
+                                        type="text"
+                                        name="city"
+                                        id="city"
+                                        placeholder="e.g., New York"
+                                        value={formData.city}
+                                        onChange={handleChange}
+                                        className="w-full px-4 py-4 rounded-xl border-2 border-gray-200 bg-gray-50 text-gray-800 outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all"
+                                        required
+                                    />
+                                </div>
+
+                                <div>
+                                    <label htmlFor="state" className="block text-sm font-semibold text-gray-700 mb-2">State/Country *</label>
+                                    <input
+                                        type="text"
+                                        name="state"
+                                        id="state"
+                                        placeholder="e.g., USA"
+                                        value={formData.state}
+                                        onChange={handleChange}
+                                        className="w-full px-4 py-4 rounded-xl border-2 border-gray-200 bg-gray-50 text-gray-800 outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all"
                                         required
                                     />
                                 </div>
                             </div>
-                            <div className="w-full px-3 sm:w-1/2">
-                                <div className="mb-5">
-                                    <label htmlFor="endDate" className="mb-3 block text-base font-medium text-[#07074D]">
-                                        End Date
-                                    </label>
-                                    <input
-                                        type="date"
-                                        name="endDate"
-                                        id="endDate"
-                                        value={formData.endDate}
-                                        onChange={handleChange}
-                                        className="w-full rounded-md border border-[#e0e0e0] bg-white py-3 px-6 text-base font-medium text-[#6B7280] outline-none focus:border-[#6A64F1] focus:shadow-md"
-                                        required
-                                    />
-                                </div>
-                            </div>
                         </div>
-                        <div className="mb-5 pt-3">
-                            <label className="mb-5 block text-base font-semibold text-[#07074D] sm:text-xl">
-                                Address Details
-                            </label>
-                            <div className="-mx-3 flex flex-wrap">
-                                <div className="w-full px-3 sm:w-1/2">
-                                    <div className="mb-5">
-                                        <input
-                                            type="text"
-                                            name="area"
-                                            id="area"
-                                            placeholder="Enter area"
-                                            value={formData.area}
-                                            onChange={handleChange}
-                                            className="w-full rounded-md border border-[#e0e0e0] bg-white py-3 px-6 text-base font-medium text-[#6B7280] outline-none focus:border-[#6A64F1] focus:shadow-md"
-                                            required
-                                        />
-                                    </div>
-                                </div>
-                                <div className="w-full px-3 sm:w-1/2">
-                                    <div className="mb-5">
-                                        <input
-                                            type="text"
-                                            name="city"
-                                            id="city"
-                                            placeholder="Enter city"
-                                            value={formData.city}
-                                            onChange={handleChange}
-                                            className="w-full rounded-md border border-[#e0e0e0] bg-white py-3 px-6 text-base font-medium text-[#6B7280] outline-none focus:border-[#6A64F1] focus:shadow-md"
-                                            required
-                                        />
-                                    </div>
-                                </div>
-                                <div className="w-full px-3 sm:w-1/2">
-                                    <div className="mb-5">
-                                        <input
-                                            type="text"
-                                            name="state"
-                                            id="state"
-                                            placeholder="Enter state"
-                                            value={formData.state}
-                                            onChange={handleChange}
-                                            className="w-full rounded-md border border-[#e0e0e0] bg-white py-3 px-6 text-base font-medium text-[#6B7280] outline-none focus:border-[#6A64F1] focus:shadow-md"
-                                            required
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div>
+
+                        {/* Submit Button */}
+                        <div className="pt-6">
                             <button
                                 type="submit"
-                                className="hover:shadow-form w-full rounded-md bg-[#6A64F1] py-3 px-8 text-center text-base font-semibold text-white outline-none hover:bg-purple-600"
+                                disabled={loading}
+                                className="w-full relative overflow-hidden rounded-2xl bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 py-5 px-8 text-lg font-bold text-white shadow-2xl transform transition-all duration-300 hover:scale-[1.02] disabled:opacity-70 disabled:cursor-not-allowed"
                             >
-                                Make a Plan!
+                                <span className="flex items-center justify-center space-x-3">
+                                    {loading ? (
+                                        <>
+                                            <svg className="animate-spin h-6 w-6" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                            </svg>
+                                            <span>Crafting Your Journey...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span>✨</span>
+                                            <span>Generate Dream Itinerary</span>
+                                            <span>🚀</span>
+                                        </>
+                                    )}
+                                </span>
                             </button>
                         </div>
                     </form>
 
-                    {/* Display the generated trip plan with improved destination description */}
-                    {tripPlan && (
-                        <div className="mt-8 p-4 border rounded-md bg-gray-50">
-                            <h2 className="text-2xl font-bold">{tripPlan.title || 'Trip Details'}</h2>
-                            <p><strong>ID:</strong> {tripPlan._id}</p>
-                            <p><strong>Full Name:</strong> {tripPlan.createdBy || 'N/A'}</p>
-                            <p><strong>Start Date:</strong> {tripPlan.startDate}</p>
-                            <p><strong>End Date:</strong> {tripPlan.endDate}</p>
-
-                            {/* Enhanced destination display with AI description */}
-                            <div className="mt-3 pb-3 border-b">
-                                <p className="text-lg font-semibold">Destination: {tripPlan.destination ||
-                                    (tripPlan.days && tripPlan.days.length > 0 && tripPlan.days[0].location) ||
-                                    (tripPlan.title && tripPlan.title.includes('in') ?
-                                        tripPlan.title.split('in')[1].trim() : 'Not specified')}
-                                </p>
-
-                                {/* Extract destination description from notes or first day description */}
-                                <div className="mt-2 text-gray-700">
-                                    {tripPlan.notes ? (
-                                        <p>{tripPlan.notes}</p>
-                                    ) : tripPlan.days && tripPlan.days.length > 0 && tripPlan.days[0].activities &&
-                                        tripPlan.days[0].activities.length > 0 ? (
-                                        <p>{tripPlan.days[0].activities[0].description ||
-                                            tripPlan.days[0].activities[0].notes ||
-                                            "No destination description available"}</p>
-                                    ) : (
-                                        <p>No destination description available</p>
-                                    )}
+                    {/* Error Message */}
+                    {error && (
+                        <div className="mt-6 p-5 bg-red-50 border-l-4 border-red-500 rounded-xl">
+                            <div className="flex items-start">
+                                <span className="text-2xl mr-3">❌</span>
+                                <div>
+                                    <h3 className="text-red-800 font-bold mb-1">Error</h3>
+                                    <p className="text-red-700">{error}</p>
                                 </div>
                             </div>
+                        </div>
+                    )}
+                </div>
 
-                            {/* Display the itinerary highlights */}
-                            {tripPlan.days && tripPlan.days.length > 0 && (
-                                <div className="mt-4">
-                                    <h3 className="text-xl font-semibold">Itinerary Highlights:</h3>
-                                    <ul className="list-disc pl-5 mt-2">
-                                        {tripPlan.days.map((day, index) => (
-                                            <li key={index} className="mb-2">
-                                                <div>
-                                                    <strong>Day {day.day}:</strong> {day.location}
-                                                    {day.activities && day.activities.length > 0 && (
-                                                        <ul className="list-circle pl-5 mt-1 text-sm text-gray-600">
-                                                            {day.activities.slice(0, 2).map((activity, i) => (
-                                                                <li key={i}>{activity.title} at {activity.location}</li>
-                                                            ))}
-                                                            {day.activities.length > 2 && (
-                                                                <li>...and {day.activities.length - 2} more activities</li>
-                                                            )}
-                                                        </ul>
-                                                    )}
-                                                </div>
-                                            </li>
-                                        ))}
-                                    </ul>
+                {/* Trip Display */}
+                {tripPlan && (
+                    <div className="bg-white rounded-3xl shadow-2xl p-8 md:p-12 mb-8">
+                        <div className="text-center mb-10 pb-8 border-b-2 border-purple-100">
+                            <span className="text-6xl mb-4 inline-block">🎉</span>
+                            <h2 className="text-4xl font-black bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-3">
+                                {tripPlan.title || 'Your Dream Itinerary'}
+                            </h2>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+                            <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-2xl p-6 transform hover:scale-105 transition-transform">
+                                <div className="text-3xl mb-3">📍</div>
+                                <p className="text-sm font-semibold text-purple-700 mb-1">Destination</p>
+                                <p className="text-lg font-bold text-purple-900">{tripPlan.destination}</p>
+                            </div>
+
+                            <div className="bg-gradient-to-br from-pink-50 to-pink-100 rounded-2xl p-6 transform hover:scale-105 transition-transform">
+                                <div className="text-3xl mb-3">📅</div>
+                                <p className="text-sm font-semibold text-pink-700 mb-1">Duration</p>
+                                <p className="text-lg font-bold text-pink-900">{tripPlan.startDate} → {tripPlan.endDate}</p>
+                            </div>
+
+                            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-6 transform hover:scale-105 transition-transform">
+                                <div className="text-3xl mb-3">👤</div>
+                                <p className="text-sm font-semibold text-blue-700 mb-1">Traveler</p>
+                                <p className="text-lg font-bold text-blue-900">{tripPlan.createdBy}</p>
+                            </div>
+
+                            {tripPlan.budget && (
+                                <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-2xl p-6 transform hover:scale-105 transition-transform">
+                                    <div className="text-3xl mb-3">💰</div>
+                                    <p className="text-sm font-semibold text-green-700 mb-1">Budget</p>
+                                    <p className="text-lg font-bold text-green-900">{tripPlan.budget.currency} {tripPlan.budget.estimated?.toLocaleString()}</p>
                                 </div>
                             )}
                         </div>
-                    )}
 
-                    <Link href="/getTrips">
-                        <button className='hover:shadow-form w-full rounded-md bg-red-400 py-3 px-8 text-center text-base font-semibold text-white outline-none hover:bg-amber-500 my-8'>Get Trip Details</button>
-                    </Link>
+                        {tripPlan.notes && (
+                            <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-8 mb-10 border-2 border-amber-200">
+                                <div className="flex items-start space-x-4">
+                                    <span className="text-4xl">ℹ️</span>
+                                    <div className="flex-1">
+                                        <h3 className="text-2xl font-bold text-gray-800 mb-3">About Your Destination</h3>
+                                        <p className="text-gray-700 leading-relaxed text-lg">{tripPlan.notes}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
-                    
+                        {tripPlan.days && tripPlan.days.length > 0 && (
+                            <div className="space-y-6">
+                                <h3 className="text-3xl font-bold text-gray-800 mb-6 flex items-center">
+                                    <span className="mr-3">📋</span>
+                                    Your Daily Adventure
+                                </h3>
+                                
+                                {tripPlan.days.map((day, dayIndex) => (
+                                    <div key={dayIndex}>
+                                        <div className="bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-3xl shadow-xl overflow-hidden transform hover:scale-[1.02] transition-all">
+                                            <div className="bg-white/10 backdrop-blur-sm text-white p-6">
+                                                <div className="flex items-center justify-between">
+                                                    <div>
+                                                        <h4 className="text-3xl font-black mb-1">Day {day.day}</h4>
+                                                        <p className="text-lg opacity-90">{day.date} • {day.location}</p>
+                                                    </div>
+                                                    <div className="text-5xl opacity-80">{dayIndex === 0 ? '🌅' : dayIndex === tripPlan.days.length - 1 ? '🌃' : '☀️'}</div>
+                                                </div>
+                                            </div>
+
+                                            <div className="bg-white p-6 space-y-4">
+                                                {day.activities && day.activities.slice(0, 3).map((activity, actIndex) => (
+                                                    <div key={actIndex} className="flex items-start space-x-4 p-4 bg-gray-50 rounded-xl hover:bg-purple-50 transition-colors">
+                                                        <div className="flex-shrink-0 w-16 h-16 bg-gradient-to-br from-purple-400 to-pink-400 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-lg">
+                                                            {activity.time?.split(':')[0] || '⏰'}
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <h5 className="font-bold text-lg text-gray-800 mb-1">{activity.title}</h5>
+                                                            <p className="text-gray-600 text-sm mb-2">{activity.description}</p>
+                                                            <div className="flex items-center text-sm text-purple-600">
+                                                                <span className="mr-1">📍</span>
+                                                                <span className="font-medium">{activity.location}</span>
+                                                            </div>
+                                                            {activity.notes && (
+                                                                <div className="mt-2 p-3 bg-yellow-50 border-l-4 border-yellow-400 rounded-lg">
+                                                                    <p className="text-sm text-gray-700">
+                                                                        <span className="font-bold">💡 Pro Tip:</span> {activity.notes}
+                                                                    </p>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                                
+                                                {day.activities && day.activities.length > 3 && (
+                                                    <div className="text-center py-3">
+                                                        <span className="inline-block px-6 py-2 bg-purple-100 text-purple-700 rounded-full font-semibold text-sm">
+                                                            + {day.activities.length - 3} more activities
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {tripPlan._id && (
+                            <div className="mt-10 p-6 bg-gray-50 rounded-2xl border-2 border-gray-200">
+                                <p className="text-sm text-gray-600 mb-2">Trip Reference ID</p>
+                                <p className="text-lg font-mono font-bold text-gray-800 break-all">{tripPlan._id}</p>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* View All Trips Button */}
+                <Link href="/getTrips">
+                    <button className="w-full relative overflow-hidden rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 py-6 px-8 text-lg font-bold text-white shadow-2xl transform transition-all duration-300 hover:scale-[1.02]">
+                        <span className="flex items-center justify-center space-x-3">
+                            <span>🔍</span>
+                            <span>Browse All Your Adventures</span>
+                            <span>→</span>
+                        </span>
+                    </button>
+                </Link>
             </div>
         </div>
     );

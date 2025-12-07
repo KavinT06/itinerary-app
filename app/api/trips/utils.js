@@ -1,118 +1,26 @@
 export async function requestAIResponse(prompt) {
-    const endpoint = 'http://127.0.0.1:11434/api/generate';
+    const apiKey = process.env.GEMINI_API_KEY || 'AIzaSyB5-9D-Y-90x7okhlzSAyHshki6iRwr_do';
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+    
+    const enhancedPrompt = `${prompt}\n\nRespond with ONLY valid JSON. No markdown, no code blocks, no explanatory text.\n\nRequired structure:\n{\n  "title": "string",\n  "destination": "string",\n  "startDate": "string (YYYY-MM-DD)",\n  "endDate": "string (YYYY-MM-DD)",\n  "createdBy": "string",\n  "participants": [{"name": "string", "email": "string"}],\n  "days": [{\n    "day": number,\n    "date": "string (YYYY-MM-DD)",\n    "location": "string",\n    "activities": [{\n      "time": "string",\n      "title": "string",\n      "description": "string",\n      "location": "string",\n      "notes": "string"\n    }]\n  }],\n  "notes": "string",\n  "budget": {"currency": "string", "estimated": number, "spent": 0}\n}\n\nGenerate 3-5 activities per day with realistic details.`;
+
     const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            model: 'llama3.2',
-            prompt,
-            stream: false,
-            format: {
-                '$schema': 'http://json-schema.org/draft-04/schema#',
-                type: 'object',
-                properties: {
-                    title: { type: 'string' },
-                    startDate: { type: 'string' },
-                    endDate: { type: 'string' },
-                    createdBy: { type: 'string' },
-                    participants: {
-                        type: 'array',
-                        items: [
-                            {
-                                type: 'object',
-                                properties: {
-                                    name: { type: 'string' },
-                                    email: { type: 'string' },
-                                },
-                                required: ['name', 'email'],
-                            },
-                            {
-                                type: 'object',
-                                properties: {
-                                    name: { type: 'string' },
-                                    email: { type: 'string' },
-                                },
-                                required: ['name', 'email'],
-                            },
-                        ],
-                    },
-                    days: {
-                        type: 'array',
-                        items: [
-                            {
-                                type: 'object',
-                                properties: {
-                                    day: { type: 'integer' },
-                                    date: { type: 'string' },
-                                    location: { type: 'string' },
-                                    activities: {
-                                        type: 'array',
-                                        minItems: 3,
-                                        items: [
-                                            {
-                                                type: 'object',
-                                                properties: {
-                                                    time: { type: 'string' },
-                                                    title: { type: 'string' },
-                                                    description: { type: 'string' },
-                                                    location: { type: 'string' },
-                                                    notes: { type: 'string' },
-                                                },
-                                                required: ['time', 'title', 'description', 'location', 'notes'],
-                                            },
-                                        ],
-                                    },
-                                },
-                                required: ['day', 'date', 'location', 'activities'],
-                            },
-                            {
-                                type: 'object',
-                                properties: {
-                                    day: { type: 'integer' },
-                                    date: { type: 'string' },
-                                    location: { type: 'string' },
-                                    activities: {
-                                        type: 'array',
-                                        items: [
-                                            {
-                                                type: 'object',
-                                                properties: {
-                                                    time: { type: 'string' },
-                                                    title: { type: 'string' },
-                                                    location: { type: 'string' },
-                                                    notes: { type: 'string' },
-                                                },
-                                                required: ['time', 'title', 'location', 'notes'],
-                                            },
-                                        ],
-                                    },
-                                },
-                                required: ['day', 'date', 'location', 'activities'],
-                            },
-                        ],
-                    },
-                    notes: { type: 'string' },
-                    budget: {
-                        type: 'object',
-                        properties: {
-                            currency: { type: 'string' },
-                            estimated: { type: 'integer' },
-                            spent: { type: 'integer' },
-                        },
-                        required: ['currency', 'estimated', 'spent'],
-                    },
-                },
-                required: ['tripId', 'title', 'startDate', 'endDate', 'createdBy', 'participants', 'days', 'notes', 'budget'],
-            },
-        }),
+            contents: [{ parts: [{ text: enhancedPrompt }] }],
+            generationConfig: { temperature: 0.7, topK: 40, topP: 0.95, maxOutputTokens: 4096 }
+        })
     });
 
-    // console.log(response)
-    // console.log(response.ok)
     if (!response.ok) {
-        throw new Error('Failed to fetch from Ollama API');
+        const errorData = await response.json();
+        throw new Error(`Gemini API error: ${errorData.error?.message || 'Unknown error'}`);
     }
 
     const data = await response.json();
-    return JSON.parse(data.response);
+    let responseText = data.candidates[0].content.parts[0].text;
+    responseText = responseText.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+    
+    return JSON.parse(responseText);
 }
