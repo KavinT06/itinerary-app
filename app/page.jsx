@@ -17,23 +17,7 @@ function App() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [retryCount, setRetryCount] = useState(0);
-    const [canSubmit, setCanSubmit] = useState(true);
-    const [cooldownTime, setCooldownTime] = useState(0);
-
-    useEffect(() => {
-        if (cooldownTime > 0) {
-            const timer = setInterval(() => {
-                setCooldownTime(prev => {
-                    if (prev <= 1) {
-                        setCanSubmit(true);
-                        return 0;
-                    }
-                    return prev - 1;
-                });
-            }, 1000);
-            return () => clearInterval(timer);
-        }
-    }, [cooldownTime]);
+    const [lastRequestTime, setLastRequestTime] = useState(0);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -45,8 +29,13 @@ function App() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         
-        if (!canSubmit) {
-            setError(`Please wait ${cooldownTime} seconds before submitting again`);
+        const now = Date.now();
+        const timeSinceLastRequest = now - lastRequestTime;
+        const minimumDelay = 5000;
+        
+        if (timeSinceLastRequest < minimumDelay) {
+            const waitTime = Math.ceil((minimumDelay - timeSinceLastRequest) / 1000);
+            setError(`Please wait ${waitTime} seconds between requests to respect API limits`);
             return;
         }
 
@@ -54,7 +43,7 @@ function App() {
         setError(null);
         setLoading(true);
         setRetryCount(0);
-        setCanSubmit(false);
+        setLastRequestTime(now);
 
         const payload = {
             destination: `${formData.area}, ${formData.city}, ${formData.state}`,
@@ -81,13 +70,12 @@ function App() {
                     setRetryCount(attempt);
                     
                     if (attempt < maxRetries) {
-                        const waitTime = Math.pow(2, attempt) * 2000;
-                        setError(`Rate limit hit. Retrying in ${waitTime/1000} seconds... (${attempt}/${maxRetries})`);
+                        const waitTime = Math.pow(2, attempt) * 3000;
+                        setError(`API rate limit reached. Retrying in ${waitTime/1000} seconds (Attempt ${attempt}/${maxRetries})`);
                         await sleep(waitTime);
                         continue;
                     } else {
-                        setCooldownTime(60);
-                        throw new Error('Rate limit exceeded. Please wait 60 seconds before trying again.');
+                        throw new Error('API rate limit exceeded. Please wait 60 seconds before submitting a new request.');
                     }
                 }
 
@@ -98,15 +86,11 @@ function App() {
 
                 setTripPlan(responseData.trip);
                 setError(null);
-                setCooldownTime(5);
                 break;
 
             } catch (err) {
                 if (attempt === maxRetries - 1) {
                     setError(err.message || 'An unexpected error occurred');
-                    if (!err.message.includes('Rate limit')) {
-                        setCooldownTime(10);
-                    }
                     break;
                 }
             }
@@ -297,16 +281,11 @@ function App() {
                         <div className="pt-6">
                             <button
                                 type="submit"
-                                disabled={loading || !canSubmit}
+                                disabled={loading}
                                 className="w-full relative overflow-hidden rounded-2xl bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 py-5 px-8 text-lg font-bold text-white shadow-2xl transform transition-all duration-300 hover:scale-[1.02] disabled:opacity-70 disabled:cursor-not-allowed"
                             >
                                 <span className="flex items-center justify-center space-x-3">
-                                    {!canSubmit && !loading ? (
-                                        <>
-                                            <span>⏳</span>
-                                            <span>Wait {cooldownTime}s</span>
-                                        </>
-                                    ) : loading ? (
+                                    {loading ? (
                                         <>
                                             <svg className="animate-spin h-6 w-6" viewBox="0 0 24 24">
                                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
@@ -314,14 +293,14 @@ function App() {
                                             </svg>
                                             <span>
                                                 {retryCount > 0 
-                                                    ? `Retrying... (${retryCount}/3)` 
-                                                    : 'Crafting Your Journey...'}
+                                                    ? `Retrying (${retryCount}/3)` 
+                                                    : 'Generating Itinerary...'}
                                             </span>
                                         </>
                                     ) : (
                                         <>
                                             <span>✨</span>
-                                            <span>Generate Dream Itinerary</span>
+                                            <span>Generate Itinerary</span>
                                             <span>🚀</span>
                                         </>
                                     )}
@@ -336,18 +315,14 @@ function App() {
                             <div className="flex items-start">
                                 <span className="text-2xl mr-3">❌</span>
                                 <div>
-                                    <h3 className="text-red-800 font-bold mb-1">Error</h3>
+                                    <h3 className="text-red-800 font-bold mb-1">Request Failed</h3>
                                     <p className="text-red-700">{error}</p>
-                                    {error.includes('Rate limit') && (
-                                        <div className="mt-3 space-y-2">
-                                            <p className="text-red-600 text-sm">
-                                                💡 <strong>Gemini API Rate Limits:</strong>
+                                    {(error.includes('rate limit') || error.includes('Rate limit')) && (
+                                        <div className="mt-3 p-3 bg-amber-50 border-l-4 border-amber-400 rounded">
+                                            <p className="text-amber-800 text-sm font-semibold">ℹ️ API Rate Limit Information</p>
+                                            <p className="text-amber-700 text-sm mt-1">
+                                                Please wait at least 5 seconds between requests. The system will automatically retry with increasing delays.
                                             </p>
-                                            <ul className="text-red-600 text-sm ml-6 list-disc">
-                                                <li>Free tier: 15 requests per minute</li>
-                                                <li>Wait 60 seconds between requests</li>
-                                                <li>The button will re-enable automatically</li>
-                                            </ul>
                                         </div>
                                     )}
                                 </div>
