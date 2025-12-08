@@ -1,5 +1,4 @@
 "use client";
-import Link from 'next/link';
 import React, { useState } from 'react';
 
 function App() {
@@ -22,34 +21,6 @@ function App() {
         const { name, value } = e.target;
         setFormData((prev) => ({ ...prev, [name]: value }));
     };
-
-    // const handleSubmit = async (e) => {
-    //     e.preventDefault();
-    //     setTripPlan(null);
-
-    //     const payload = {
-    //         destination: `${formData.area}, ${formData.city}, ${formData.state} ${formData.postCode}`,
-    //         startDate: formData.startDate,
-    //         endDate: formData.endDate,
-    //         createdBy: formData.name
-    //     };
-
-    //     try {
-    //         const response = await fetch('/api/trips', {
-    //             method: 'POST',
-    //             headers: { 'Content-Type': 'application/json' },
-    //             body: JSON.stringify(payload),
-    //         });
-
-    //         if (!response.ok) throw new Error('Failed to generate trip plan');
-    //         const data = await response.json();
-    //         alert('Trip saved successfully!');
-    //         setTripPlan(data); // Display the trip details
-    //     } catch (err) {
-    //         alert('Error: ' + err.message); // Show error as an alert
-    //     }
-    // };
-
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -83,25 +54,8 @@ function App() {
                 throw new Error(errorMsg);
             }
 
-            if (responseData.acknowledged && responseData.insertedId) {
-                const tripId = responseData.insertedId;
-                console.log('✅ [CLIENT] Trip created with ID:', tripId);
-                console.log('🔄 [CLIENT] Fetching trip details...');
-                
-                const tripResponse = await fetch(`/api/trips/${tripId}`);
-                
-                if (!tripResponse.ok) {
-                    console.error('❌ [CLIENT] Failed to fetch trip details');
-                    throw new Error('Failed to fetch created trip');
-                }
-                
-                const tripData = await tripResponse.json();
-                console.log('✅ [CLIENT] Trip details received');
-                setTripPlan(tripData);
-            } else {
-                console.log('✅ [CLIENT] Using response data directly');
-                setTripPlan(responseData);
-            }
+            console.log('✅ [CLIENT] Trip generated successfully');
+            setTripPlan(responseData.trip);
         } catch (err) {
             console.error('❌ [CLIENT] Error:', err.message);
             console.error('   Full error:', err);
@@ -438,25 +392,35 @@ function App() {
                             </div>
                         )}
 
-                        {tripPlan._id && (
+                        {tripPlan.id && (
                             <div className="mt-10 p-6 bg-gray-50 rounded-2xl border-2 border-gray-200">
                                 <p className="text-sm text-gray-600 mb-2">Trip Reference ID</p>
-                                <p className="text-lg font-mono font-bold text-gray-800 break-all">{tripPlan._id}</p>
+                                <p className="text-lg font-mono font-bold text-gray-800 break-all">{tripPlan.id}</p>
                             </div>
                         )}
+
+                        <div className="mt-10 text-center">
+                            <button
+                                onClick={() => {
+                                    setTripPlan(null);
+                                    setFormData({
+                                        name: '',
+                                        phone: '',
+                                        email: '',
+                                        startDate: '',
+                                        endDate: '',
+                                        area: '',
+                                        city: '',
+                                        state: '',
+                                    });
+                                }}
+                                className="px-8 py-4 bg-gradient-to-r from-gray-600 to-gray-800 text-white rounded-xl font-bold hover:scale-105 transition-transform"
+                            >
+                                ← Create Another Trip
+                            </button>
+                        </div>
                     </div>
                 )}
-
-                {/* View All Trips Button */}
-                <Link href="/getTrips">
-                    <button className="w-full relative overflow-hidden rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 py-6 px-8 text-lg font-bold text-white shadow-2xl transform transition-all duration-300 hover:scale-[1.02]">
-                        <span className="flex items-center justify-center space-x-3">
-                            <span>🔍</span>
-                            <span>Browse All Your Adventures</span>
-                            <span>→</span>
-                        </span>
-                    </button>
-                </Link>
             </div>
         </div>
     );

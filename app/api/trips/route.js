@@ -1,31 +1,21 @@
-import { connectToMongoDB } from '../../lib/mongodb';
-import { requestAIResponse, saveTrip } from './utils';
-
-export async function GET() {
-    try {
-        const { tripPlans } = await connectToMongoDB();
-        const savedTrip = await tripPlans.find({}).toArray();
-        return new Response(JSON.stringify(savedTrip), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' },
-        });
-    } catch (error) {
-        console.error('Fetch error:', error);
-        return new Response(JSON.stringify({ error: 'Something went wrong' }), {
-            status: 500,
-            headers: { 'Content-Type': 'application/json' },
-        });
-    }
-}
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export async function POST(request) {
+    console.log('🔍 [API] POST /api/trips - Request received');
+    
     try {
         const payload = await request.json();
         const { destination, startDate, endDate, createdBy } = payload;
         
-        console.log('📨 [API] POST request received');
-        console.log('📨 [API] Payload:', { destination, startDate, endDate, createdBy });
-        
+        console.log('📝 [API] Request payload:', {
+            destination,
+            startDate,
+            endDate,
+            createdBy,
+            timestamp: new Date().toISOString()
+        });
+
+        // Validate required fields
         if (!destination || !startDate || !endDate || !createdBy) {
             console.error('❌ [API] Missing required fields');
             return new Response(JSON.stringify({ error: 'Missing required fields' }), {
@@ -33,96 +23,171 @@ export async function POST(request) {
                 headers: { 'Content-Type': 'application/json' },
             });
         }
-        
-        const prompt = `Give me a trip plan for ${destination} from ${startDate} to ${endDate} created by ${createdBy} in JSON format.`;
 
-        console.log('🔄 [API] Step 1: Connecting to MongoDB...');
-        let mongoConnection;
-        try {
-            mongoConnection = await connectToMongoDB();
-            console.log('✅ [API] Step 1: MongoDB connected');
-        } catch (mongoError) {
-            console.error('❌ [API] Step 1 failed: MongoDB connection error');
-            console.error('   ', mongoError.message);
-            throw mongoError;
+        // Validate API key
+        const apiKey = process.env.GEMINI_API_KEY;
+        
+        if (!apiKey) {
+            console.error('❌ [GEMINI] API Key is missing!');
+            console.error('   Environment variables available:', Object.keys(process.env).filter(k => k.includes('GEMINI')));
+            return new Response(JSON.stringify({
+                error: 'AI service not properly configured - API key missing'
+            }), {
+                status: 500,
+                headers: { 'Content-Type': 'application/json' },
+            });
         }
-        
-        const { tripPlans } = mongoConnection;
-        
-        console.log('🔄 [API] Step 2: Requesting AI response from Gemini...');
-        let AiPlan;
-        try {
-            AiPlan = await requestAIResponse(prompt);
-            console.log('✅ [API] Step 2: AI response received');
-            console.log('🔍 [API] Response has', Object.keys(AiPlan).length, 'properties');
-        } catch (aiError) {
-            console.error('❌ [API] Step 2 failed: Gemini API error');
-            console.error('   ', aiError.message);
-            throw aiError;
+
+        console.log('✅ [GEMINI] API Key found');
+
+        // Initialize Gemini
+        console.log('🤖 [GEMINI] Initializing AI...');
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+
+        // Calculate duration
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        const durationDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+
+        // Create detailed prompt
+        const prompt = `Create a detailed ${durationDays}-day travel itinerary for ${destination} from ${startDate} to ${endDate}.
+
+Traveler: ${createdBy}
+
+Please provide a comprehensive trip plan in JSON format with this EXACT structure:
+{
+  "title": "Trip to [destination]",
+  "destination": "${destination}",
+  "startDate": "${startDate}",
+  "endDate": "${endDate}",
+  "createdBy": "${createdBy}",
+  "participants": [{"name": "${createdBy}", "email": "traveler@example.com"}],
+  "days": [
+    {
+      "day": 1,
+      "date": "${startDate}",
+      "location": "[main location for day]",
+      "activities": [
+        {
+          "time": "09:00 AM",
+          "title": "[Activity name]",
+          "description": "[Detailed description]",
+          "location": "[Specific location]",
+          "notes": "[Helpful tips]"
         }
-        
-        console.log('🔄 [API] Step 3: Saving trip to database...');
-        let savedTrip;
+      ]
+    }
+  ],
+  "notes": "General travel tips and recommendations for ${destination}",
+  "budget": {
+    "currency": "USD",
+    "estimated": [reasonable estimate for ${durationDays} days],
+    "spent": 0
+  }
+}
+
+Create ${durationDays} days with 4-6 activities per day. Include morning, afternoon, and evening activities. Make it realistic and engaging.
+
+IMPORTANT: Return ONLY valid JSON. No markdown, no code blocks, no explanatory text before or after.`;
+
+        console.log('📤 [GEMINI] Sending request to Gemini API...');
+        console.log('   Prompt length:', prompt.length);
+        console.log('   Duration:', durationDays, 'days');
+
+        // Generate content with timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+        let result;
         try {
-            savedTrip = await tripPlans.insertOne(AiPlan);
-            console.log('✅ [API] Step 3: Trip saved successfully');
-            console.log('🔍 [API] Saved trip ID:', savedTrip.insertedId);
-        } catch (saveError) {
-            console.error('❌ [API] Step 3 failed: Database save error');
-            console.error('   ', saveError.message);
-            throw saveError;
+            result = await model.generateContent(prompt);
+            clearTimeout(timeoutId);
+        } catch (genError) {
+            clearTimeout(timeoutId);
+            throw genError;
         }
-        
+
+        console.log('📥 [GEMINI] Response received');
+
+        if (!result || !result.response) {
+            console.error('❌ [GEMINI] Invalid response structure:', result);
+            throw new Error('Invalid response from AI service');
+        }
+
+        const response = result.response;
+        let textResponse = response.text();
+
+        console.log('✅ [GEMINI] Text extracted');
+        console.log('   Response length:', textResponse?.length || 0);
+
+        if (!textResponse || textResponse.length === 0) {
+            console.error('❌ [GEMINI] Empty response received');
+            throw new Error('AI service returned empty response');
+        }
+
+        // Clean up response (remove markdown code blocks if present)
+        textResponse = textResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+
+        // Parse JSON
+        let tripPlan;
+        try {
+            tripPlan = JSON.parse(textResponse);
+            console.log('✅ [API] JSON parsed successfully');
+            console.log('   Trip has', tripPlan.days?.length || 0, 'days');
+        } catch (parseError) {
+            console.error('❌ [API] JSON parsing failed:', parseError.message);
+            console.error('   Response preview:', textResponse.substring(0, 200));
+            throw new Error('Failed to parse AI response as JSON');
+        }
+
+        // Add generated ID and timestamp
+        tripPlan.id = Date.now().toString();
+        tripPlan.generatedAt = new Date().toISOString();
+
+        console.log('✅ [API] Sending response to client');
+        console.log('   Trip ID:', tripPlan.id);
+
         return new Response(JSON.stringify({
-            acknowledged: true,
-            insertedId: savedTrip.insertedId.toString(),
             success: true,
-            tripId: savedTrip.insertedId.toString(),
-            trip: AiPlan
+            trip: tripPlan
         }), {
             status: 200,
             headers: { 'Content-Type': 'application/json' },
         });
+
     } catch (error) {
-        console.error('❌ [API] Error generating trip');
+        console.error('❌ [ERROR] Detailed error information:');
         console.error('   Message:', error.message);
         console.error('   Name:', error.name);
-        console.error('   Code:', error.code);
+        console.error('   Stack:', error.stack);
         
-        // Determine appropriate status code and user-friendly message
+        // Determine appropriate error response
         let statusCode = 500;
         let errorMessage = 'Failed to generate trip';
         let userFriendlyDetails = error.message;
-        
-        if (error.message.includes('MongoDB') || error.message.includes('connection')) {
-            statusCode = 503;
-            errorMessage = 'Database service unavailable';
-            userFriendlyDetails = 'Unable to connect to database. Please try again later.';
-        } else if (error.message.includes('leaked')) {
+
+        if (error.message.includes('API key') || error.message.includes('401') || error.message.includes('403')) {
             statusCode = 401;
             errorMessage = 'AI service authentication failed';
-            userFriendlyDetails = 'Your API key was compromised. A new key is required. Contact support.';
-        } else if (error.message.includes('authentication failed') || error.message.includes('401') || error.message.includes('403')) {
-            statusCode = 401;
-            errorMessage = 'AI service not properly configured';
-            userFriendlyDetails = error.message;
+            userFriendlyDetails = 'Invalid or missing API key. Please check configuration.';
         } else if (error.message.includes('quota') || error.message.includes('rate limit') || error.message.includes('429')) {
             statusCode = 429;
             errorMessage = 'AI service limit reached';
             userFriendlyDetails = 'Too many requests. Please try again in a few moments.';
-        } else if (error.message.includes('timeout') || error.message.includes('504')) {
+        } else if (error.message.includes('timeout') || error.name === 'AbortError') {
             statusCode = 504;
             errorMessage = 'Request timed out';
             userFriendlyDetails = 'The request took too long. Please try again.';
         }
-        
+
         console.error('   Final status:', statusCode);
         console.error('   Final message:', errorMessage);
-        
-        return new Response(JSON.stringify({ 
+
+        return new Response(JSON.stringify({
             error: errorMessage,
             details: userFriendlyDetails,
-            type: error.constructor.name
+            timestamp: new Date().toISOString()
         }), {
             status: statusCode,
             headers: { 'Content-Type': 'application/json' },
