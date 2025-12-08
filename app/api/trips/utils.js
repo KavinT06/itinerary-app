@@ -18,6 +18,10 @@ export async function requestAIResponse(prompt) {
     try {
         console.log('📤 [GEMINI] Sending request to Gemini API');
         console.log('📤 [GEMINI] Prompt length:', enhancedPrompt.length);
+        console.log('📤 [GEMINI] Endpoint:', endpoint.replace(apiKey, '***'));
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
         
         const response = await fetch(endpoint, {
             method: 'POST',
@@ -25,17 +29,38 @@ export async function requestAIResponse(prompt) {
             body: JSON.stringify({
                 contents: [{ parts: [{ text: enhancedPrompt }] }],
                 generationConfig: { temperature: 0.7, topK: 40, topP: 0.95, maxOutputTokens: 4096 }
-            })
+            }),
+            signal: controller.signal
         });
 
+        clearTimeout(timeoutId);
         console.log('📥 [GEMINI] Response status:', response.status);
         
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
             console.error('❌ [GEMINI] API returned error:');
             console.error('   Status:', response.status);
+            console.error('   Status Text:', response.statusText);
             console.error('   Error:', JSON.stringify(errorData, null, 2));
-            throw new Error(`Gemini API error: ${errorData.error?.message || response.statusText}`);
+            
+            if (response.status === 401 || response.status === 403) {
+                const errorMsg = errorData.error?.message || 'Invalid API key or insufficient permissions';
+                
+                // Check for specific error messages
+                if (errorMsg.includes('leaked')) {
+                    throw new Error(`Gemini API authentication failed: Your API key was reported as leaked. Please generate a new API key at https://aistudio.google.com/apikey`);
+                } else if (errorMsg.includes('quota')) {
+                    throw new Error(`Gemini API quota exceeded. Please upgrade your plan or wait before retrying.`);
+                } else {
+                    throw new Error(`Gemini API authentication failed: ${errorMsg}`);
+                }
+            } else if (response.status === 429) {
+                throw new Error('Gemini API rate limit exceeded. Please try again later.');
+            } else if (response.status === 500) {
+                throw new Error('Gemini API server error. Please try again later.');
+            } else {
+                throw new Error(`Gemini API error: ${errorData.error?.message || response.statusText}`);
+            }
         }
 
         const data = await response.json();
@@ -56,6 +81,7 @@ export async function requestAIResponse(prompt) {
         
         let responseText = data.candidates[0].content.parts[0].text;
         console.log('🔍 [GEMINI] Raw response text length:', responseText.length);
+        console.log('🔍 [GEMINI] First 100 chars:', responseText.substring(0, 100));
         
         responseText = responseText.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
         
@@ -78,7 +104,13 @@ export async function requestAIResponse(prompt) {
         
         return parsedResponse;
     } catch (error) {
+        if (error.name === 'AbortError') {
+            console.error('❌ [GEMINI] Request timeout (30 seconds exceeded)');
+            throw new Error('Gemini API request timed out. The service took too long to respond.');
+        }
+        
         console.error('❌ [GEMINI] Error in requestAIResponse:');
+        console.error('   Name:', error.name);
         console.error('   Message:', error.message);
         console.error('   Stack:', error.stack);
         throw error;
