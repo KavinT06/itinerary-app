@@ -38,29 +38,36 @@ async function initializeConnection() {
 
         console.log(`🔄 [MONGO] Initializing connection (attempt ${connectionAttempts}/${MAX_RETRIES})...`);
         console.log('🔍 [MONGO] URI starts with:', MONGODB_URI.substring(0, 30) + '...');
+        console.log('🔍 [MONGO] Node environment:', process.env.NODE_ENV);
 
         mongoClient = new MongoClient(MONGODB_URI, {
             maxPoolSize: 5,
             minPoolSize: 1,
             maxIdleTimeMS: 60000,
-            serverSelectionTimeoutMS: 15000,
-            socketTimeoutMS: 45000,
-            connectTimeoutMS: 15000,
+            serverSelectionTimeoutMS: 30000,
+            socketTimeoutMS: 60000,
+            connectTimeoutMS: 30000,
             family: 4,
             retryWrites: true,
         });
 
         console.log('🔄 [MONGO] Calling client.connect()...');
+        const connectStart = Date.now();
+        
         await mongoClient.connect();
-        console.log('✅ [MONGO] Connected successfully');
+        
+        const connectTime = Date.now() - connectStart;
+        console.log('✅ [MONGO] Connected successfully in', connectTime, 'ms');
 
         mongoDb = mongoClient.db(MONGODB_DB);
         console.log('✅ [MONGO] Database selected:', MONGODB_DB);
 
         // Test the connection with ping
         console.log('🔄 [MONGO] Running ping test...');
+        const pingStart = Date.now();
         await mongoDb.admin().ping();
-        console.log('✅ [MONGO] Ping successful');
+        const pingTime = Date.now() - pingStart;
+        console.log('✅ [MONGO] Ping successful in', pingTime, 'ms');
 
         // Reset retry counter on success
         connectionAttempts = 0;
@@ -68,7 +75,8 @@ async function initializeConnection() {
         return { client: mongoClient, db: mongoDb };
 
     } catch (error) {
-        console.error('❌ [MONGO] Connection error (attempt', connectionAttempts + ')');
+        const errorTime = new Date().toISOString();
+        console.error('❌ [MONGO] Connection error (attempt', connectionAttempts + '/' + MAX_RETRIES + ') at', errorTime);
         console.error('   Message:', error.message);
         console.error('   Code:', error.code);
         console.error('   Name:', error.name);
@@ -85,17 +93,20 @@ async function initializeConnection() {
             console.error('   Solution: Check username/password in connection string');
         } else if (error.message.includes('timeout')) {
             console.error('   ⚠️  Connection timeout');
-            console.error('   Solution: Check network/firewall and MongoDB Atlas IP whitelist');
+            console.error('   Solution: Check network/firewall and MongoDB Atlas IP whitelist (add 0.0.0.0/0)');
         } else if (error.message.includes('MONGODB_URI')) {
             console.error('   ⚠️  MONGODB_URI not configured');
             console.error('   Solution: Set MONGODB_URI environment variable');
+        } else if (error.message.includes('ECONNRESET')) {
+            console.error('   ⚠️  Connection reset by peer');
+            console.error('   Solution: Check MongoDB Atlas IP whitelist');
         }
         
         mongoClient = null;
         mongoDb = null;
 
         if (connectionAttempts < MAX_RETRIES) {
-            console.log('🔄 [MONGO] Retrying connection...');
+            console.log('🔄 [MONGO] Retrying connection in 1 second...');
             await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
             return initializeConnection();
         }
