@@ -357,7 +357,7 @@ function App() {
                                 <div className="flex items-start space-x-4">
                                     <span className="text-4xl">ℹ️</span>
                                     <div className="flex-1">
-                                        <h3 className="text-2xl font-bold text-gray-800 mb-3">About Your Destination</h3>
+                                        <h3 className="text-2xl font-bold text-gray-800 mb-3">About Your Destination!</h3>
                                         <p className="text-gray-700 leading-relaxed text-lg">{tripPlan.notes}</p>
                                     </div>
                                 </div>
