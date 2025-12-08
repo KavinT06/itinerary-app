@@ -101,7 +101,7 @@ function App() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="min-h-screen bg-linear-to-br from-indigo-50 via-purple-50 to-pink-50 py-12 px-4 sm:px-6 lg:px-8">
             <div className="max-w-5xl mx-auto">
                 {/* Header */}
                 <div className="text-center mb-12">
@@ -112,7 +112,7 @@ function App() {
                             <span>🌍</span>
                         </div>
                     </div>
-                    <h1 className="text-5xl font-black bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 bg-clip-text text-transparent mb-4">
+                    <h1 className="text-5xl font-black bg-linear-to-r from-purple-600 via-pink-600 to-blue-600 bg-clip-text text-transparent mb-4">
                         AI Travel Planner
                     </h1>
                     <p className="text-lg text-gray-600 max-w-2xl mx-auto">
@@ -282,7 +282,7 @@ function App() {
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="w-full relative overflow-hidden rounded-2xl bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 py-5 px-8 text-lg font-bold text-white shadow-2xl transform transition-all duration-300 hover:scale-[1.02] disabled:opacity-70 disabled:cursor-not-allowed"
+                                className="w-full relative overflow-hidden rounded-2xl bg-linear-to-r from-purple-600 via-pink-600 to-blue-600 py-5 px-8 text-lg font-bold text-white shadow-2xl transform transition-all duration-300 hover:scale-[1.02] disabled:opacity-70 disabled:cursor-not-allowed"
                             >
                                 <span className="flex items-center justify-center space-x-3">
                                     {loading ? (
@@ -336,32 +336,32 @@ function App() {
                     <div className="bg-white rounded-3xl shadow-2xl p-8 md:p-12 mb-8">
                         <div className="text-center mb-10 pb-8 border-b-2 border-purple-100">
                             <span className="text-6xl mb-4 inline-block">🎉</span>
-                            <h2 className="text-4xl font-black bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-3">
+                            <h2 className="text-4xl font-black bg-linear-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-3">
                                 {tripPlan.title || 'Your Dream Itinerary'}
                             </h2>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-                            <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-2xl p-6 transform hover:scale-105 transition-transform">
+                            <div className="bg-linear-to-br from-purple-50 to-purple-100 rounded-2xl p-6 transform hover:scale-105 transition-transform">
                                 <div className="text-3xl mb-3">📍</div>
                                 <p className="text-sm font-semibold text-purple-700 mb-1">Destination</p>
                                 <p className="text-lg font-bold text-purple-900">{tripPlan.destination}</p>
                             </div>
 
-                            <div className="bg-gradient-to-br from-pink-50 to-pink-100 rounded-2xl p-6 transform hover:scale-105 transition-transform">
+                            <div className="bg-linear-to-br from-pink-50 to-pink-100 rounded-2xl p-6 transform hover:scale-105 transition-transform">
                                 <div className="text-3xl mb-3">📅</div>
                                 <p className="text-sm font-semibold text-pink-700 mb-1">Duration</p>
                                 <p className="text-lg font-bold text-pink-900">{tripPlan.startDate} → {tripPlan.endDate}</p>
                             </div>
 
-                            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-6 transform hover:scale-105 transition-transform">
+                            <div className="bg-linear-to-br from-blue-50 to-blue-100 rounded-2xl p-6 transform hover:scale-105 transition-transform">
                                 <div className="text-3xl mb-3">👤</div>
                                 <p className="text-sm font-semibold text-blue-700 mb-1">Traveler</p>
                                 <p className="text-lg font-bold text-blue-900">{tripPlan.createdBy}</p>
                             </div>
 
                             {tripPlan.budget && (
-                                <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-2xl p-6 transform hover:scale-105 transition-transform">
+                                <div className="bg-linear-to-br from-green-50 to-green-100 rounded-2xl p-6 transform hover:scale-105 transition-transform">
                                     <div className="text-3xl mb-3">💰</div>
                                     <p className="text-sm font-semibold text-green-700 mb-1">Budget</p>
                                     <p className="text-lg font-bold text-green-900">{tripPlan.budget.currency} {tripPlan.budget.estimated?.toLocaleString()}</p>
@@ -370,7 +370,7 @@ function App() {
                         </div>
 
                         {tripPlan.notes && (
-                            <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-8 mb-10 border-2 border-amber-200">
+                            <div className="bg-linear-to-br from-amber-50 to-orange-50 rounded-2xl p-8 mb-10 border-2 border-amber-200">
                                 <div className="flex items-start space-x-4">
                                     <span className="text-4xl">ℹ️</span>
                                     <div className="flex-1">
@@ -390,7 +390,7 @@ function App() {
                                 
                                 {tripPlan.days.map((day, dayIndex) => (
                                     <div key={dayIndex}>
-                                        <div className="bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-3xl shadow-xl overflow-hidden transform hover:scale-[1.02] transition-all">
+                                        <div className="bg-linear-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-3xl shadow-xl overflow-hidden transform hover:scale-[1.02] transition-all">
                                             <div className="bg-white/10 backdrop-blur-sm text-white p-6">
                                                 <div className="flex items-center justify-between">
                                                     <div>
@@ -404,7 +404,7 @@ function App() {
                                             <div className="bg-white p-6 space-y-4">
                                                 {day.activities && day.activities.slice(0, 3).map((activity, actIndex) => (
                                                     <div key={actIndex} className="flex items-start space-x-4 p-4 bg-gray-50 rounded-xl hover:bg-purple-50 transition-colors">
-                                                        <div className="flex-shrink-0 w-16 h-16 bg-gradient-to-br from-purple-400 to-pink-400 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-lg">
+                                                        <div className="shrink-0 w-16 h-16 bg-linear-to-br from-purple-400 to-pink-400 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-lg">
                                                             {activity.time?.split(':')[0] || '⏰'}
                                                         </div>
                                                         <div className="flex-1">
@@ -461,7 +461,7 @@ function App() {
                                         state: '',
                                     });
                                 }}
-                                className="px-8 py-4 bg-gradient-to-r from-gray-600 to-gray-800 text-white rounded-xl font-bold hover:scale-105 transition-transform"
+                                className="px-8 py-4 bg-linear-to-r from-gray-600 to-gray-800 text-white rounded-xl font-bold hover:scale-105 transition-transform"
                             >
                                 ← Create Another Trip
                             </button>
