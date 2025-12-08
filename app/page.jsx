@@ -36,30 +36,22 @@ function App() {
         };
 
         try {
-            console.log('📨 [CLIENT] Sending trip request with payload:', payload);
-            
             const response = await fetch('/api/trips', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
             });
 
-            console.log('📥 [CLIENT] Response status:', response.status);
             const responseData = await response.json();
-            console.log('📥 [CLIENT] Response data:', responseData);
 
             if (!response.ok) {
                 const errorMsg = responseData.error || responseData.details || 'Failed to generate trip plan';
-                console.error('❌ [CLIENT] API returned error:', errorMsg);
                 throw new Error(errorMsg);
             }
 
-            console.log('✅ [CLIENT] Trip generated successfully');
             setTripPlan(responseData.trip);
         } catch (err) {
-            console.error('❌ [CLIENT] Error:', err.message);
-            console.error('   Full error:', err);
-            setError(err.message || 'An unexpected error occurred. Check console logs for details.');
+            setError(err.message || 'An unexpected error occurred');
         } finally {
             setLoading(false);
         }
