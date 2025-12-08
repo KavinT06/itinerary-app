@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 function App() {
     const [formData, setFormData] = useState({
@@ -18,6 +18,18 @@ function App() {
     const [error, setError] = useState(null);
     const [retryCount, setRetryCount] = useState(0);
     const [lastRequestTime, setLastRequestTime] = useState(0);
+    const [cooldown, setCooldown] = useState(0);
+    const abortControllerRef = useRef(null);
+
+    useEffect(() => {
+        let timer;
+        if (cooldown > 0) {
+            timer = setInterval(() => {
+                setCooldown(prev => prev > 0 ? prev - 1 : 0);
+            }, 1000);
+        }
+        return () => clearInterval(timer);
+    }, [cooldown]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -29,13 +41,19 @@ function App() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         
+        // Cancel any existing request
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
+        
         const now = Date.now();
         const timeSinceLastRequest = now - lastRequestTime;
-        const minimumDelay = 5000;
+        const minimumDelay = 10000; // 10 seconds between requests
         
-        if (timeSinceLastRequest < minimumDelay) {
+        if (timeSinceLastRequest < minimumDelay && lastRequestTime !== 0) {
             const waitTime = Math.ceil((minimumDelay - timeSinceLastRequest) / 1000);
-            setError(`Please wait ${waitTime} seconds between requests to respect API limits`);
+            setError(`Please wait ${waitTime} seconds before submitting another request`);
+            setCooldown(waitTime);
             return;
         }
 
@@ -44,6 +62,10 @@ function App() {
         setLoading(true);
         setRetryCount(0);
         setLastRequestTime(now);
+        setCooldown(10); // Set 10 second cooldown
+        
+        // Create new AbortController
+        abortControllerRef.current = new AbortController();
 
         const payload = {
             destination: `${formData.area}, ${formData.city}, ${formData.state}`,
@@ -61,6 +83,7 @@ function App() {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload),
+                    signal: abortControllerRef.current.signal,
                 });
 
                 const responseData = await response.json();
@@ -89,6 +112,10 @@ function App() {
                 break;
 
             } catch (err) {
+                if (err.name === 'AbortError') {
+                    console.log('Request cancelled');
+                    break;
+                }
                 if (attempt === maxRetries - 1) {
                     setError(err.message || 'An unexpected error occurred');
                     break;
@@ -98,10 +125,11 @@ function App() {
 
         setLoading(false);
         setRetryCount(0);
+        abortControllerRef.current = null;
     };
 
     return (
-        <div className="min-h-screen bg-linear-to-br from-indigo-50 via-purple-50 to-pink-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 py-12 px-4 sm:px-6 lg:px-8">
             <div className="max-w-5xl mx-auto">
                 {/* Header */}
                 <div className="text-center mb-12">
@@ -281,11 +309,16 @@ function App() {
                         <div className="pt-6">
                             <button
                                 type="submit"
-                                disabled={loading}
-                                className="w-full relative overflow-hidden rounded-2xl bg-linear-to-r from-purple-600 via-pink-600 to-blue-600 py-5 px-8 text-lg font-bold text-white shadow-2xl transform transition-all duration-300 hover:scale-[1.02] disabled:opacity-70 disabled:cursor-not-allowed"
+                                disabled={loading || cooldown > 0}
+                                className="w-full relative overflow-hidden rounded-2xl bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 py-5 px-8 text-lg font-bold text-white shadow-2xl transform transition-all duration-300 hover:scale-[1.02] disabled:opacity-70 disabled:cursor-not-allowed"
                             >
                                 <span className="flex items-center justify-center space-x-3">
-                                    {loading ? (
+                                    {cooldown > 0 && !loading ? (
+                                        <>
+                                            <span>⏳</span>
+                                            <span>Wait {cooldown}s</span>
+                                        </>
+                                    ) : loading ? (
                                         <>
                                             <svg className="animate-spin h-6 w-6" viewBox="0 0 24 24">
                                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
