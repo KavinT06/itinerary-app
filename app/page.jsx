@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 function App() {
     const [formData, setFormData] = useState({
@@ -16,17 +16,45 @@ function App() {
     const [tripPlan, setTripPlan] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [retryCount, setRetryCount] = useState(0);
+    const [canSubmit, setCanSubmit] = useState(true);
+    const [cooldownTime, setCooldownTime] = useState(0);
+
+    useEffect(() => {
+        if (cooldownTime > 0) {
+            const timer = setInterval(() => {
+                setCooldownTime(prev => {
+                    if (prev <= 1) {
+                        setCanSubmit(true);
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+            return () => clearInterval(timer);
+        }
+    }, [cooldownTime]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData((prev) => ({ ...prev, [name]: value }));
     };
 
+    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
     const handleSubmit = async (e) => {
         e.preventDefault();
+        
+        if (!canSubmit) {
+            setError(`Please wait ${cooldownTime} seconds before submitting again`);
+            return;
+        }
+
         setTripPlan(null);
         setError(null);
         setLoading(true);
+        setRetryCount(0);
+        setCanSubmit(false);
 
         const payload = {
             destination: `${formData.area}, ${formData.city}, ${formData.state}`,
@@ -35,26 +63,57 @@ function App() {
             createdBy: formData.name
         };
 
-        try {
-            const response = await fetch('/api/trips', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-            });
+        const maxRetries = 3;
+        let attempt = 0;
 
-            const responseData = await response.json();
+        while (attempt < maxRetries) {
+            try {
+                const response = await fetch('/api/trips', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
 
-            if (!response.ok) {
-                const errorMsg = responseData.error || responseData.details || 'Failed to generate trip plan';
-                throw new Error(errorMsg);
+                const responseData = await response.json();
+
+                if (response.status === 429) {
+                    attempt++;
+                    setRetryCount(attempt);
+                    
+                    if (attempt < maxRetries) {
+                        const waitTime = Math.pow(2, attempt) * 2000;
+                        setError(`Rate limit hit. Retrying in ${waitTime/1000} seconds... (${attempt}/${maxRetries})`);
+                        await sleep(waitTime);
+                        continue;
+                    } else {
+                        setCooldownTime(60);
+                        throw new Error('Rate limit exceeded. Please wait 60 seconds before trying again.');
+                    }
+                }
+
+                if (!response.ok) {
+                    const errorMsg = responseData.error || responseData.details || 'Failed to generate trip plan';
+                    throw new Error(errorMsg);
+                }
+
+                setTripPlan(responseData.trip);
+                setError(null);
+                setCooldownTime(5);
+                break;
+
+            } catch (err) {
+                if (attempt === maxRetries - 1) {
+                    setError(err.message || 'An unexpected error occurred');
+                    if (!err.message.includes('Rate limit')) {
+                        setCooldownTime(10);
+                    }
+                    break;
+                }
             }
-
-            setTripPlan(responseData.trip);
-        } catch (err) {
-            setError(err.message || 'An unexpected error occurred');
-        } finally {
-            setLoading(false);
         }
+
+        setLoading(false);
+        setRetryCount(0);
     };
 
     return (
@@ -238,17 +297,26 @@ function App() {
                         <div className="pt-6">
                             <button
                                 type="submit"
-                                disabled={loading}
+                                disabled={loading || !canSubmit}
                                 className="w-full relative overflow-hidden rounded-2xl bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 py-5 px-8 text-lg font-bold text-white shadow-2xl transform transition-all duration-300 hover:scale-[1.02] disabled:opacity-70 disabled:cursor-not-allowed"
                             >
                                 <span className="flex items-center justify-center space-x-3">
-                                    {loading ? (
+                                    {!canSubmit && !loading ? (
+                                        <>
+                                            <span>⏳</span>
+                                            <span>Wait {cooldownTime}s</span>
+                                        </>
+                                    ) : loading ? (
                                         <>
                                             <svg className="animate-spin h-6 w-6" viewBox="0 0 24 24">
                                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                                             </svg>
-                                            <span>Crafting Your Journey...</span>
+                                            <span>
+                                                {retryCount > 0 
+                                                    ? `Retrying... (${retryCount}/3)` 
+                                                    : 'Crafting Your Journey...'}
+                                            </span>
                                         </>
                                     ) : (
                                         <>
@@ -270,6 +338,18 @@ function App() {
                                 <div>
                                     <h3 className="text-red-800 font-bold mb-1">Error</h3>
                                     <p className="text-red-700">{error}</p>
+                                    {error.includes('Rate limit') && (
+                                        <div className="mt-3 space-y-2">
+                                            <p className="text-red-600 text-sm">
+                                                💡 <strong>Gemini API Rate Limits:</strong>
+                                            </p>
+                                            <ul className="text-red-600 text-sm ml-6 list-disc">
+                                                <li>Free tier: 15 requests per minute</li>
+                                                <li>Wait 60 seconds between requests</li>
+                                                <li>The button will re-enable automatically</li>
+                                            </ul>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
