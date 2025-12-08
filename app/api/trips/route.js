@@ -49,8 +49,10 @@ export async function POST(request) {
         console.log('🔍 [API] Saved trip ID:', savedTrip.insertedId);
         
         return new Response(JSON.stringify({
+            acknowledged: true,
+            insertedId: savedTrip.insertedId.toString(),
             success: true,
-            tripId: savedTrip.insertedId,
+            tripId: savedTrip.insertedId.toString(),
             trip: AiPlan
         }), {
             status: 200,

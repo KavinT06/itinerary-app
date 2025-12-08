@@ -3,25 +3,36 @@ import { ObjectId } from 'mongodb';
 
 export async function GET(request, { params }) {
     try {
+        console.log('📨 [GET] Fetching trip by ID');
         const { tripPlans } = await connectToMongoDB();
         const tripId = params.tripId;
+        
+        console.log('🔍 [GET] Trip ID:', tripId);
+        
         const savedTrip = await tripPlans.findOne({ _id: ObjectId.createFromHexString(tripId) });
-        console.log(tripId);
-        console.log(savedTrip);
+        console.log('✅ [GET] Trip found:', !!savedTrip);
+        console.log('🔍 [GET] Trip data keys:', savedTrip ? Object.keys(savedTrip) : 'null');
+        
         if (savedTrip) {
             return new Response(JSON.stringify(savedTrip), {
                 status: 200,
                 headers: { 'Content-Type': 'application/json' },
             });
         } else {
+            console.error('❌ [GET] Trip not found with ID:', tripId);
             return new Response(JSON.stringify({ error: 'Trip not found' }), {
                 status: 404,
                 headers: { 'Content-Type': 'application/json' },
             });
         }
     } catch (error) {
-        console.error('Fetch error:', error);
-        return new Response(JSON.stringify({ error: 'Something went wrong' }), {
+        console.error('❌ [GET] Error fetching trip:');
+        console.error('   Message:', error.message);
+        console.error('   Stack:', error.stack);
+        return new Response(JSON.stringify({ 
+            error: 'Something went wrong',
+            details: error.message 
+        }), {
             status: 500,
             headers: { 'Content-Type': 'application/json' },
         });

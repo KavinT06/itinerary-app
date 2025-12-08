@@ -65,31 +65,47 @@ function App() {
         };
 
         try {
+            console.log('📨 [CLIENT] Sending trip request with payload:', payload);
+            
             const response = await fetch('/api/trips', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
             });
 
+            console.log('📥 [CLIENT] Response status:', response.status);
             const responseData = await response.json();
+            console.log('📥 [CLIENT] Response data:', responseData);
 
             if (!response.ok) {
-                throw new Error(responseData.error || 'Failed to generate trip plan');
+                const errorMsg = responseData.error || responseData.details || 'Failed to generate trip plan';
+                console.error('❌ [CLIENT] API returned error:', errorMsg);
+                throw new Error(errorMsg);
             }
 
             if (responseData.acknowledged && responseData.insertedId) {
                 const tripId = responseData.insertedId;
+                console.log('✅ [CLIENT] Trip created with ID:', tripId);
+                console.log('🔄 [CLIENT] Fetching trip details...');
+                
                 const tripResponse = await fetch(`/api/trips/${tripId}`);
                 
-                if (!tripResponse.ok) throw new Error('Failed to fetch created trip');
+                if (!tripResponse.ok) {
+                    console.error('❌ [CLIENT] Failed to fetch trip details');
+                    throw new Error('Failed to fetch created trip');
+                }
+                
                 const tripData = await tripResponse.json();
+                console.log('✅ [CLIENT] Trip details received');
                 setTripPlan(tripData);
             } else {
+                console.log('✅ [CLIENT] Using response data directly');
                 setTripPlan(responseData);
             }
         } catch (err) {
-            console.error('Error:', err.message);
-            setError(err.message);
+            console.error('❌ [CLIENT] Error:', err.message);
+            console.error('   Full error:', err);
+            setError(err.message || 'An unexpected error occurred. Check console logs for details.');
         } finally {
             setLoading(false);
         }
