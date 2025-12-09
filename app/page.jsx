@@ -16,10 +16,10 @@ function App() {
     const [tripPlan, setTripPlan] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const [retryCount, setRetryCount] = useState(0);
     const [lastRequestTime, setLastRequestTime] = useState(0);
     const [cooldown, setCooldown] = useState(0);
     const abortControllerRef = useRef(null);
+    const isRequestInProgress = useRef(false);
 
     useEffect(() => {
         let timer;
@@ -36,19 +36,17 @@ function App() {
         setFormData((prev) => ({ ...prev, [name]: value }));
     };
 
-    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
     const handleSubmit = async (e) => {
         e.preventDefault();
         
-        // Cancel any existing request
-        if (abortControllerRef.current) {
-            abortControllerRef.current.abort();
+        // Prevent duplicate requests
+        if (isRequestInProgress.current || loading) {
+            return;
         }
         
         const now = Date.now();
         const timeSinceLastRequest = now - lastRequestTime;
-        const minimumDelay = 10000; // 10 seconds between requests
+        const minimumDelay = 15000; // 15 seconds between requests
         
         if (timeSinceLastRequest < minimumDelay && lastRequestTime !== 0) {
             const waitTime = Math.ceil((minimumDelay - timeSinceLastRequest) / 1000);
@@ -57,12 +55,17 @@ function App() {
             return;
         }
 
+        // Cancel any existing request
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
+
+        isRequestInProgress.current = true;
         setTripPlan(null);
         setError(null);
         setLoading(true);
-        setRetryCount(0);
         setLastRequestTime(now);
-        setCooldown(10); // Set 10 second cooldown
+        setCooldown(15);
         
         // Create new AbortController
         abortControllerRef.current = new AbortController();
@@ -74,58 +77,41 @@ function App() {
             createdBy: formData.name
         };
 
-        const maxRetries = 3;
-        let attempt = 0;
+        try {
+            const response = await fetch('/api/trips', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+                signal: abortControllerRef.current.signal,
+            });
 
-        while (attempt < maxRetries) {
-            try {
-                const response = await fetch('/api/trips', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload),
-                    signal: abortControllerRef.current.signal,
-                });
+            const responseData = await response.json();
 
-                const responseData = await response.json();
-
-                if (response.status === 429) {
-                    attempt++;
-                    setRetryCount(attempt);
-                    
-                    if (attempt < maxRetries) {
-                        const waitTime = Math.pow(2, attempt) * 3000;
-                        setError(`API rate limit reached. Retrying in ${waitTime/1000} seconds (Attempt ${attempt}/${maxRetries})`);
-                        await sleep(waitTime);
-                        continue;
-                    } else {
-                        throw new Error('API rate limit exceeded. Please wait 60 seconds before submitting a new request.');
-                    }
-                }
-
-                if (!response.ok) {
-                    const errorMsg = responseData.error || responseData.details || 'Failed to generate trip plan';
-                    throw new Error(errorMsg);
-                }
-
-                setTripPlan(responseData.trip);
-                setError(null);
-                break;
-
-            } catch (err) {
-                if (err.name === 'AbortError') {
-                    console.log('Request cancelled');
-                    break;
-                }
-                if (attempt === maxRetries - 1) {
-                    setError(err.message || 'An unexpected error occurred');
-                    break;
-                }
+            if (response.status === 429) {
+                setCooldown(60);
+                setLastRequestTime(Date.now());
+                throw new Error('API rate limit exceeded. Please wait 60 seconds before trying again.');
             }
-        }
 
-        setLoading(false);
-        setRetryCount(0);
-        abortControllerRef.current = null;
+            if (!response.ok) {
+                const errorMsg = responseData.error || responseData.details || 'Failed to generate trip plan';
+                throw new Error(errorMsg);
+            }
+
+            setTripPlan(responseData.trip);
+            setError(null);
+
+        } catch (err) {
+            if (err.name === 'AbortError') {
+                // Request was cancelled, do nothing
+            } else {
+                setError(err.message || 'An unexpected error occurred');
+            }
+        } finally {
+            setLoading(false);
+            isRequestInProgress.current = false;
+            abortControllerRef.current = null;
+        }
     };
 
     return (
@@ -324,11 +310,7 @@ function App() {
                                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                                             </svg>
-                                            <span>
-                                                {retryCount > 0 
-                                                    ? `Retrying (${retryCount}/3)` 
-                                                    : 'Generating Itinerary...'}
-                                            </span>
+                                            <span>Generating Itinerary...</span>
                                         </>
                                     ) : (
                                         <>
