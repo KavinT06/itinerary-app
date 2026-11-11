@@ -1,264 +1,106 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import {
+    parseTripRequest,
+    buildPrompt,
+    buildResponseSchema,
+    parseModelJson,
+    normalizeItinerary,
+    ItineraryFormatError,
+    SYSTEM_INSTRUCTION,
+} from '../../../lib/itinerary.js';
+import { generateJson, getModelName, AIServiceError } from '../../../lib/gemini.js';
+import { createRateLimiter, clientKey } from '../../../lib/rate-limit.js';
 
-// Simple in-memory rate limiting
-const requestCache = new Map();
-const RATE_LIMIT_WINDOW = 60000; // 1 minute
-const MAX_REQUESTS_PER_MINUTE = 10; // Max requests per minute per IP
+export const runtime = 'nodejs';
+// Long itineraries can take a while to generate. Must exceed GEMINI timeout (50s).
+export const maxDuration = 60;
 
-function checkRateLimit(identifier) {
-    const now = Date.now();
-    const userRequests = requestCache.get(identifier) || [];
-    
-    // Filter out old requests outside the window
-    const recentRequests = userRequests.filter(time => now - time < RATE_LIMIT_WINDOW);
-    
-    if (recentRequests.length >= MAX_REQUESTS_PER_MINUTE) {
-        return { allowed: false, remaining: 0, resetIn: Math.ceil((recentRequests[0] + RATE_LIMIT_WINDOW - now) / 1000) };
-    }
-    
-    recentRequests.push(now);
-    requestCache.set(identifier, recentRequests);
-    
-    // Clean up old entries periodically
-    if (requestCache.size > 1000) {
-        const cutoff = now - RATE_LIMIT_WINDOW;
-        for (const [key, times] of requestCache.entries()) {
-            const validTimes = times.filter(t => t > cutoff);
-            if (validTimes.length === 0) {
-                requestCache.delete(key);
-            } else {
-                requestCache.set(key, validTimes);
-            }
-        }
-    }
-    
-    return { allowed: true, remaining: MAX_REQUESTS_PER_MINUTE - recentRequests.length };
+const RATE_LIMIT = { limit: 5, windowMs: 60_000 };
+const checkRateLimit = createRateLimiter(RATE_LIMIT);
+
+const NO_STORE = { 'Cache-Control': 'no-store' };
+
+function errorResponse(status, error, extraHeaders = {}, extraBody = {}) {
+    return Response.json({ error, ...extraBody }, { status, headers: { ...NO_STORE, ...extraHeaders } });
 }
+
+// User-facing messages are deliberately generic: internal details go to server logs only.
+const AI_ERROR_RESPONSES = {
+    not_configured: [503, 'The itinerary service is not available right now. Please try again later.'],
+    auth: [503, 'The itinerary service is not available right now. Please try again later.'],
+    model_not_found: [503, 'The itinerary service is not available right now. Please try again later.'],
+    rate_limited: [429, 'The AI service is busy right now. Please wait a minute and try again.'],
+    timeout: [504, 'Generating your itinerary took too long. Please try again, or plan a shorter trip.'],
+    blocked: [422, "We couldn't create an itinerary for that destination. Please check the destination and try again."],
+    truncated: [502, 'That itinerary was too long to generate in one go. Please try a shorter trip.'],
+    upstream: [502, 'The AI service is temporarily unavailable. Please try again in a moment.'],
+};
 
 export async function POST(request) {
+    // Only our own page may spend AI quota. Browsers send Sec-Fetch-Site; requiring JSON
+    // forces a CORS preflight (which we never approve) for any cross-origin fetch.
+    if (request.headers.get('sec-fetch-site') === 'cross-site') {
+        return errorResponse(403, 'Cross-site requests are not allowed.');
+    }
+    if (!request.headers.get('content-type')?.toLowerCase().startsWith('application/json')) {
+        return errorResponse(415, 'Content-Type must be application/json.');
+    }
+
+    const rate = checkRateLimit(clientKey(request.headers));
+    if (!rate.allowed) {
+        return errorResponse(
+            429,
+            `Too many requests. Please wait ${rate.retryAfterSeconds} seconds and try again.`,
+            { 'Retry-After': String(rate.retryAfterSeconds) },
+            { retryAfter: rate.retryAfterSeconds }
+        );
+    }
+
+    let body;
     try {
-        // Get client identifier for rate limiting
-        const forwardedFor = request.headers.get('x-forwarded-for');
-        const realIp = request.headers.get('x-real-ip');
-        const clientId = forwardedFor?.split(',')[0]?.trim() || realIp || 'unknown';
-        
-        // Check rate limit
-        const rateLimitResult = checkRateLimit(clientId);
-        if (!rateLimitResult.allowed) {
-            console.log(`Rate limit exceeded for client: ${clientId}`);
-            return new Response(JSON.stringify({
-                error: 'Too many requests',
-                details: `Please wait ${rateLimitResult.resetIn} seconds before trying again`,
-                retryAfter: rateLimitResult.resetIn
-            }), {
-                status: 429,
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Retry-After': String(rateLimitResult.resetIn)
-                },
-            });
-        }
-
-        const payload = await request.json();
-        const { destination, startDate, endDate, createdBy } = payload;
-
-        // Validate required fields
-        if (!destination || !startDate || !endDate || !createdBy) {
-            return new Response(JSON.stringify({ 
-                error: 'Missing required fields'
-            }), {
-                status: 400,
-                headers: { 'Content-Type': 'application/json' },
-            });
-        }
-
-        // Validate API key
-        const apiKey = process.env.GEMINI_API_KEY;
-        
-        if (!apiKey) {
-            console.error('GEMINI_API_KEY environment variable is not set');
-            return new Response(JSON.stringify({
-                error: 'AI service not properly configured',
-                details: 'Server configuration error. Please contact support.',
-                debug: process.env.NODE_ENV === 'development' ? 'GEMINI_API_KEY is missing' : undefined
-            }), {
-                status: 500,
-                headers: { 'Content-Type': 'application/json' },
-            });
-        }
-
-        // Log API key status (first 4 chars only for security)
-        console.log(`API Key configured: ${apiKey.substring(0, 4)}...`);
-
-        // Initialize Gemini with configuration
-        const genAI = new GoogleGenerativeAI(apiKey);
-        
-        // Use gemini-1.5-flash-8b - best free tier model with higher rate limits
-        // Free tier: 15 RPM, 1 million TPM, 1,500 RPD
-        const model = genAI.getGenerativeModel({ 
-            model: 'gemini-1.5-flash-8b',
-            generationConfig: {
-                temperature: 0.7,
-                maxOutputTokens: 4096,
-            }
-        });
-
-        // Calculate duration
-        const start = new Date(startDate);
-        const end = new Date(endDate);
-        const durationDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
-
-        // Create detailed prompt
-        const prompt = `Create a detailed ${durationDays}-day travel itinerary for ${destination} from ${startDate} to ${endDate}.
-
-Traveler: ${createdBy}
-
-Please provide a comprehensive trip plan in JSON format with this EXACT structure:
-{
-  "title": "Trip to [destination]",
-  "destination": "${destination}",
-  "startDate": "${startDate}",
-  "endDate": "${endDate}",
-  "createdBy": "${createdBy}",
-  "participants": [{"name": "${createdBy}", "email": "traveler@example.com"}],
-  "days": [
-    {
-      "day": 1,
-      "date": "${startDate}",
-      "location": "[main location for day]",
-      "activities": [
-        {
-          "time": "09:00 AM",
-          "title": "[Activity name]",
-          "description": "[Detailed description]",
-          "location": "[Specific location]",
-          "notes": "[Helpful tips]"
-        }
-      ]
+        body = await request.json();
+    } catch {
+        return errorResponse(400, 'Request body must be valid JSON.');
     }
-  ],
-  "notes": "General travel tips and recommendations for ${destination}",
-  "budget": {
-    "currency": "USD",
-    "estimated": [reasonable estimate for ${durationDays} days],
-    "spent": 0
-  }
-}
 
-Create ${durationDays} days with 4-6 activities per day. Include morning, afternoon, and evening activities. Make it realistic and engaging.
+    // Allow "yesterday" in UTC: users ahead of/behind UTC may legitimately be on a different calendar day.
+    const minStartDate = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const parsed = parseTripRequest(body, { minStartDate });
+    if (!parsed.ok) return errorResponse(400, parsed.error);
+    const tripRequest = parsed.value;
 
-IMPORTANT: Return ONLY valid JSON. No markdown, no code blocks, no explanatory text before or after.`;
-
-        // Generate content with timeout
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000);
-
-        let result;
-        try {
-            result = await model.generateContent(prompt);
-            clearTimeout(timeoutId);
-        } catch (genError) {
-            clearTimeout(timeoutId);
-            throw genError;
-        }
-
-        if (!result || !result.response) {
-            throw new Error('Invalid response from AI service');
-        }
-
-        const response = result.response;
-        let textResponse = response.text();
-
-        if (!textResponse || textResponse.length === 0) {
-            throw new Error('AI service returned empty response');
-        }
-
-        // Clean up response (remove markdown code blocks)
-        textResponse = textResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-
-        // Parse JSON
-        let tripPlan;
-        try {
-            tripPlan = JSON.parse(textResponse);
-        } catch (parseError) {
-            throw new Error('Failed to parse AI response as JSON');
-        }
-
-        // Add metadata
-        tripPlan.id = Date.now().toString();
-        tripPlan.generatedAt = new Date().toISOString();
-
-        return new Response(JSON.stringify({
-            success: true,
-            trip: tripPlan
-        }), {
-            status: 200,
-            headers: { 
-                'Content-Type': 'application/json',
-                'Cache-Control': 'no-store'
-            },
+    const startedAt = Date.now();
+    try {
+        const text = await generateJson({
+            systemInstruction: SYSTEM_INSTRUCTION,
+            prompt: buildPrompt(tripRequest),
+            responseJsonSchema: buildResponseSchema(tripRequest.dates.length),
+            signal: request.signal,
         });
+        const trip = normalizeItinerary(parseModelJson(text), tripRequest);
+        console.info('[trips] generated', { days: trip.days.length, model: getModelName(), ms: Date.now() - startedAt });
+        return Response.json({ success: true, trip }, { headers: NO_STORE });
+    } catch (err) {
+        const log = { model: getModelName(), days: tripRequest.dates.length, ms: Date.now() - startedAt };
 
-    } catch (error) {
-        console.error('Error generating trip:', error.message, error.stack);
-        
-        let statusCode = 500;
-        let errorMessage = 'Failed to generate trip';
-        let userFriendlyDetails = error.message;
-
-        // Check for various error types
-        const errorStr = error.message?.toLowerCase() || '';
-        const errorName = error.name?.toLowerCase() || '';
-        
-        if (errorStr.includes('api key') || errorStr.includes('api_key') || 
-            errorStr.includes('401') || errorStr.includes('403') || 
-            errorStr.includes('invalid') && errorStr.includes('key')) {
-            statusCode = 401;
-            errorMessage = 'AI service authentication failed';
-            userFriendlyDetails = 'Invalid or missing API key. Please check server configuration.';
-        } else if (errorStr.includes('quota') || errorStr.includes('rate') || 
-                   errorStr.includes('429') || errorStr.includes('resource') && errorStr.includes('exhausted') ||
-                   errorStr.includes('too many')) {
-            statusCode = 429;
-            errorMessage = 'AI service rate limit exceeded';
-            userFriendlyDetails = 'The AI service is temporarily unavailable due to high demand. Please wait 1-2 minutes and try again.';
-        } else if (errorStr.includes('timeout') || errorName === 'aborterror' || errorStr.includes('aborted')) {
-            statusCode = 504;
-            errorMessage = 'Request timed out';
-            userFriendlyDetails = 'Request took too long. Please try again';
-        } else if (errorStr.includes('json') || errorStr.includes('parse')) {
-            statusCode = 500;
-            errorMessage = 'Invalid AI response format';
-            userFriendlyDetails = 'AI returned invalid response. Please try again';
-        } else if (errorStr.includes('network') || errorStr.includes('fetch') || errorStr.includes('econnrefused')) {
-            statusCode = 503;
-            errorMessage = 'Network error';
-            userFriendlyDetails = 'Could not connect to AI service. Please try again.';
+        if (err instanceof AIServiceError && err.kind === 'client_aborted') {
+            // Nobody is listening for this response; not an error worth alerting on.
+            console.info('[trips] client disconnected', log);
+            return errorResponse(499, 'Request cancelled.');
         }
-
-        return new Response(JSON.stringify({
-            error: errorMessage,
-            details: userFriendlyDetails,
-            // Include debug info only in development
-            ...(process.env.NODE_ENV === 'development' && { debugError: error.message })
-        }), {
-            status: statusCode,
-            headers: { 
-                'Content-Type': 'application/json',
-                'Cache-Control': 'no-store'
-            },
-        });
+        if (err instanceof AIServiceError) {
+            console.error('[trips] AI failure', { ...log, kind: err.kind, status: err.status, message: err.message });
+            const [status, message] = AI_ERROR_RESPONSES[err.kind] ?? AI_ERROR_RESPONSES.upstream;
+            // In local development, show the developer why (e.g. invalid key). AIServiceError
+            // messages never contain key material. Production keeps the generic message.
+            const shown = process.env.NODE_ENV === 'development' ? `${message} (dev: ${err.kind} — ${err.message})` : message;
+            const headers = status === 429 ? { 'Retry-After': '60' } : {};
+            return errorResponse(status, shown, headers, status === 429 ? { retryAfter: 60 } : {});
+        }
+        if (err instanceof ItineraryFormatError) {
+            console.error('[trips] invalid model output', { ...log, message: err.message });
+            return errorResponse(502, 'The AI returned an incomplete itinerary. Please try again.');
+        }
+        console.error('[trips] unexpected error', err);
+        return errorResponse(500, 'An unexpected server error occurred. Please try again.');
     }
-}
-
-// Add OPTIONS handler for CORS
-export async function OPTIONS(request) {
-    return new Response(null, {
-        status: 200,
-        headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'POST, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type',
-        },
-    });
 }
