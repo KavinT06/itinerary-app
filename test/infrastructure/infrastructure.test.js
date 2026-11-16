@@ -187,3 +187,8 @@ test('prompt: destination is JSON-quoted data, dates are listed, and no name is 
     assert.equal(maxOutputTokensFor(14, 10_000), 9400);
     assert.equal(maxOutputTokensFor(14, 5_000), 5000);
 });
+
+test('redis store: the Upstash client is created with its own retries off', async () => {
+    const source = (await import('node:fs')).readFileSync(new URL('../../lib/infrastructure/store/redis-store.js', import.meta.url), 'utf8');
+    assert.match(source, /retry: { retries: 0 }/);
+});

@@ -38,7 +38,7 @@ test('generates a trip: request fields are authoritative and the name never reac
 
 test('invalid input is rejected before any limit or provider call', async () => {
     const provider = fakeProvider([good]);
-    const { generateTrip, store } = buildUseCase({ provider });
+    const { generateTrip } = buildUseCase({ provider });
     const cases = [
         [tripBody({ destination: '' }), 'destination'],
         [tripBody({ startDate: daysFromNow(-3), endDate: daysFromNow(-2) }), 'startDate'],
@@ -53,7 +53,6 @@ test('invalid input is rejected before any limit or provider call', async () => 
     assert.equal(provider.calls.length, 0);
     // Validation failures do not consume the client's allowance.
     assert.equal((await generateTrip(tripBody(), ctx())).meta.cache, 'miss');
-    assert.ok(store);
 });
 
 test('an identical request is served from the cache with the new caller\'s name', async () => {

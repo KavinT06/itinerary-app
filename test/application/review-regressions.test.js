@@ -187,3 +187,14 @@ test('A-07: the start-date window is a domain rule the form and server share', a
     assert.equal(addDays('2028-02-28', 1), '2028-02-29');
     assert.equal(addDays('2027-01-01', -1), '2026-12-31');
 });
+
+test('QA: a request already cancelled when it arrives never reaches the provider', async () => {
+    const provider = fakeProvider([good]);
+    const { generateTrip, store } = buildUseCase({ provider });
+    const controller = new AbortController();
+    controller.abort();
+    const err = await caught(generateTrip(tripBody(), ctx('a', controller.signal)));
+    assert.equal(err.code, 'CLIENT_CLOSED');
+    assert.equal(provider.calls.length, 0);
+    assert.deepEqual(await budgetCounters(store), { requests: 0, tokens: 0 });
+});
