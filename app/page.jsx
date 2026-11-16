@@ -2,37 +2,27 @@
 import { useEffect, useRef, useState } from 'react';
 import TripForm from './components/TripForm.jsx';
 import ItineraryView from './components/ItineraryView.jsx';
-import { requestTripItinerary } from '../lib/api-client.js';
-import { parseTripRequest, MAX_TRIP_DAYS, MAX_NAME_LENGTH } from '../lib/itinerary.js';
-import { todayLocalIso } from '../lib/dates.js';
+import GenerationStatus from './components/GenerationStatus.jsx';
+import { useTripGeneration } from './hooks/useTripGeneration.js';
+import { MAX_TRIP_DAYS, MAX_NAME_LENGTH } from '../lib/domain/trip-request.js';
+import { todayLocalIso } from '../lib/domain/dates.js';
 
-// Client-side pacing to protect the shared AI quota; the server enforces its own limit.
-const COOLDOWN_SECONDS = 15;
 const EMPTY_FORM = { name: '', startDate: '', endDate: '', area: '', city: '', state: '' };
 const LIMITS = { name: MAX_NAME_LENGTH, days: MAX_TRIP_DAYS };
+// Which form input to mark when the server or the validator names a request field.
+const FIELD_TO_INPUT = { createdBy: 'name', destination: 'area', startDate: 'startDate', endDate: 'endDate' };
 
 export default function Home() {
     const [form, setForm] = useState(EMPTY_FORM);
-    const [trip, setTrip] = useState(null);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
-    const [cooldown, setCooldown] = useState(0);
     // Computed after mount: the page is prerendered at build time, so using the
     // current date during render would cause a hydration mismatch.
     const [today, setToday] = useState('');
-    const abortRef = useRef(null);
+    const { status, trip, error, cooldown, submit, cancel, reset } = useTripGeneration();
     const resultRef = useRef(null);
 
     useEffect(() => {
         setToday(todayLocalIso());
-        return () => abortRef.current?.abort();
     }, []);
-
-    useEffect(() => {
-        if (cooldown <= 0) return undefined;
-        const timer = setTimeout(() => setCooldown((c) => c - 1), 1000);
-        return () => clearTimeout(timer);
-    }, [cooldown]);
 
     useEffect(() => {
         if (trip) resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -43,49 +33,18 @@ export default function Home() {
         setForm((prev) => ({ ...prev, [name]: value }));
     };
 
-    const handleSubmit = async (e) => {
+    const handleSubmit = (e) => {
         e.preventDefault();
-        if (loading || cooldown > 0) return;
-
-        const payload = {
+        submit({
             destination: [form.area, form.city, form.state].map((s) => s.trim()).filter(Boolean).join(', '),
             startDate: form.startDate,
             endDate: form.endDate,
             createdBy: form.name,
-        };
-
-        const parsed = parseTripRequest(payload, { minStartDate: todayLocalIso() });
-        if (!parsed.ok) {
-            setError(parsed.error);
-            return;
-        }
-
-        const controller = new AbortController();
-        abortRef.current = controller;
-        setTrip(null);
-        setError(null);
-        setLoading(true);
-
-        // The cooldown starts once the request finishes; generation itself takes 10-40s.
-        let nextCooldown = COOLDOWN_SECONDS;
-        try {
-            setTrip(await requestTripItinerary(payload, { signal: controller.signal }));
-        } catch (err) {
-            if (err.name === 'AbortError') return;
-            setError(err.message || 'An unexpected error occurred. Please try again.');
-            nextCooldown = Math.max(nextCooldown, err.retryAfterSeconds || 0);
-        } finally {
-            if (abortRef.current === controller) {
-                abortRef.current = null;
-                setLoading(false);
-                if (!controller.signal.aborted) setCooldown(nextCooldown);
-            }
-        }
+        });
     };
 
     const handleReset = () => {
-        setTrip(null);
-        setError(null);
+        reset();
         setForm(EMPTY_FORM);
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
@@ -112,34 +71,13 @@ export default function Home() {
                         form={form}
                         onChange={handleChange}
                         onSubmit={handleSubmit}
-                        loading={loading}
+                        loading={status === 'submitting'}
                         cooldown={cooldown}
                         today={today}
                         limits={LIMITS}
+                        invalidInput={error?.code === 'VALIDATION_FAILED' ? FIELD_TO_INPUT[error.field] : undefined}
                     />
-
-                    <div aria-live="polite">
-                        {loading && (
-                            <div className="mt-6 p-5 bg-purple-50 border-l-4 border-purple-400 rounded-xl">
-                                <p className="font-bold text-purple-900">Crafting your itinerary…</p>
-                                <p className="text-purple-800 text-sm mt-1">
-                                    This usually takes 10–40 seconds, longer for long trips.
-                                </p>
-                            </div>
-                        )}
-                    </div>
-
-                    {error && (
-                        <div role="alert" className="mt-6 p-5 bg-red-50 border-l-4 border-red-500 rounded-xl">
-                            <div className="flex items-start">
-                                <span aria-hidden="true" className="text-2xl mr-3">❌</span>
-                                <div>
-                                    <h3 className="text-red-800 font-bold mb-1">Couldn&apos;t create your itinerary</h3>
-                                    <p className="text-red-700">{error}</p>
-                                </div>
-                            </div>
-                        </div>
-                    )}
+                    <GenerationStatus status={status} error={error} cooldown={cooldown} onCancel={cancel} />
                 </div>
 
                 <div ref={resultRef} className="scroll-mt-6">

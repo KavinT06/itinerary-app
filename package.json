@@ -2,6 +2,7 @@
   "name": "n_itenary-app",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "engines": {
     "node": ">=22"
   },
@@ -9,18 +10,27 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "eslint .",
+    "test": "node --conditions=react-server --test \"test/**/*.test.js\"",
+    "verify": "npm run lint && npm test && npm run build && npm run test:e2e",
+    "smoke:ai": "node --conditions=react-server scripts/smoke-ai.mjs",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
-    "@google/genai": "^3.1.0",
+    "@upstash/redis": "^1.41.0",
+    "groq-sdk": "^1.6.0",
     "next": "15.5.29",
     "react": "^19.2.9",
     "react-dom": "^19.2.9",
     "server-only": "^0.0.1"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.7",
+    "@playwright/test": "^1.65.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^24.10.1",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^15.5.29",
     "tailwindcss": "^4"
   },
   "overrides": {

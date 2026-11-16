@@ -1,7 +1,7 @@
 const inputBase =
     'w-full py-4 rounded-xl border-2 border-gray-200 bg-gray-50 text-gray-800 outline-none focus:bg-white transition-all';
 
-function Field({ id, label, icon, focus, value, onChange, ...inputProps }) {
+function Field({ id, label, icon, focus, value, onChange, invalid, ...inputProps }) {
     return (
         <div>
             <label htmlFor={id} className="block text-sm font-semibold text-gray-700 mb-2">
@@ -18,7 +18,8 @@ function Field({ id, label, icon, focus, value, onChange, ...inputProps }) {
                     name={id}
                     value={value}
                     onChange={onChange}
-                    className={`${inputBase} ${icon ? 'pl-12 pr-4' : 'px-4'} ${focus}`}
+                    aria-invalid={invalid || undefined}
+                    className={`${inputBase} ${icon ? 'pl-12 pr-4' : 'px-4'} ${focus} aria-invalid:border-amber-500 aria-invalid:bg-amber-50`}
                     {...inputProps}
                 />
             </div>
@@ -35,7 +36,7 @@ function SectionHeading({ icon, border, children }) {
     );
 }
 
-export default function TripForm({ form, onChange, onSubmit, loading, cooldown, today, limits }) {
+export default function TripForm({ form, onChange, onSubmit, loading, cooldown, today, limits, invalidInput }) {
     const disabled = loading || cooldown > 0;
 
     return (
@@ -43,7 +44,7 @@ export default function TripForm({ form, onChange, onSubmit, loading, cooldown, 
             <section className="space-y-6">
                 <SectionHeading icon="👤" border="border-purple-200">About You</SectionHeading>
                 <Field
-                    id="name"
+                    id="name" invalid={invalidInput === 'name'}
                     label="Full Name *"
                     icon="👨‍💼"
                     focus="focus:border-purple-500"
@@ -61,7 +62,7 @@ export default function TripForm({ form, onChange, onSubmit, loading, cooldown, 
                 <SectionHeading icon="📅" border="border-pink-200">Travel Dates</SectionHeading>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <Field
-                        id="startDate"
+                        id="startDate" invalid={invalidInput === 'startDate'}
                         label="Departure *"
                         icon="🛫"
                         focus="focus:border-pink-500"
@@ -72,7 +73,7 @@ export default function TripForm({ form, onChange, onSubmit, loading, cooldown, 
                         onChange={onChange}
                     />
                     <Field
-                        id="endDate"
+                        id="endDate" invalid={invalidInput === 'endDate'}
                         label="Return *"
                         icon="🛬"
                         focus="focus:border-pink-500"
@@ -89,7 +90,7 @@ export default function TripForm({ form, onChange, onSubmit, loading, cooldown, 
             <section className="space-y-6">
                 <SectionHeading icon="📍" border="border-blue-200">Dream Destination</SectionHeading>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <Field id="area" label="Area *" focus="focus:border-blue-500" type="text" placeholder="e.g., Manhattan"
+                    <Field id="area" invalid={invalidInput === 'area'} label="Area *" focus="focus:border-blue-500" type="text" placeholder="e.g., Manhattan"
                         maxLength={50} required value={form.area} onChange={onChange} />
                     <Field id="city" label="City *" focus="focus:border-blue-500" type="text" placeholder="e.g., New York"
                         maxLength={50} required value={form.city} onChange={onChange} />
