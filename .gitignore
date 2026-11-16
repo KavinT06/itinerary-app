@@ -32,6 +32,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.local.example
 
 # vercel
 .vercel
@@ -39,3 +40,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Claude Code project files are shared (they are excluded by a global ignore file on some machines)
+!CLAUDE.md
+!.claude/
+.claude/settings.local.json
+
+# test output
+/test-results/
+/playwright-report/
