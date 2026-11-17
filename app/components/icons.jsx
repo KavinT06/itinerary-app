@@ -34,6 +34,21 @@ export const MapPinIcon = (p) => (
     </Icon>
 );
 
+export const LightbulbIcon = (p) => (
+    <Icon {...p}>
+        <path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5" />
+        <path d="M9 18h6" />
+        <path d="M10 22h4" />
+    </Icon>
+);
+
+export const CompassIcon = (p) => (
+    <Icon {...p}>
+        <circle cx="12" cy="12" r="10" />
+        <path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z" />
+    </Icon>
+);
+
 export const CalendarIcon = (p) => (
     <Icon {...p}>
         <path d="M8 2v4" />
