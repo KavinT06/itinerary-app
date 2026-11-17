@@ -37,7 +37,7 @@ Updated after every milestone. Last update: 2026-11-17.
 | D1 Groq plan and model | Free plan, `openai/gpt-oss-120b` |
 | D2 Shared store | Upstash Redis, optional at runtime |
 | D3 Cache lifetime | 24 hours |
-| D4 Claude Code files in git | Tracked (project `.gitignore` re-includes them) |
+| D4 Claude Code files in git | Not tracked since 2026-11-17 (personal tooling, in `.gitignore`) |
 | D5 Browser tests | Playwright |
 
 ## Checks last run (2026-11-17, branch `feat/ui-redesign`)

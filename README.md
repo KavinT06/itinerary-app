@@ -72,7 +72,6 @@ Trips can be 1 to 14 days. The full contract and the list of error codes are in
 | [docs/engineering/DEPLOYMENT.md](docs/engineering/DEPLOYMENT.md) | Environment variables, deploying, rollback, operating |
 | [docs/engineering/SECURITY_AUDIT.md](docs/engineering/SECURITY_AUDIT.md) | Security review |
 | [docs/engineering/PROJECT_STATUS.md](docs/engineering/PROJECT_STATUS.md) | Current state and open items |
-| [CLAUDE.md](CLAUDE.md) | Working rules for contributors and AI coding tools |
 
 ## Licence
 
