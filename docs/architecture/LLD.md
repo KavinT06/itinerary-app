@@ -11,13 +11,21 @@
 
 ```
 app/                                 PRESENTATION
-├── layout.js                        unchanged
-├── page.jsx                         composes the form, status and result; no request logic
-├── globals.css                      unchanged
+├── layout.js                        Manrope via next/font, metadata
+├── page.jsx                         server component: nav, hero, planner island, "How it works", footer
+├── not-found.jsx                    designed 404 (server component)
+├── globals.css                      design tokens (Tailwind 4 @theme), base styles, hero and nav CSS
 ├── components/
-│   ├── TripForm.jsx                 unchanged apart from a cancel button
-│   ├── ItineraryView.jsx            unchanged
-│   └── GenerationStatus.jsx         loading panel and error banner, chosen by error code
+│   ├── Planner.jsx                  the one client island: form state, status, result, focus management
+│   ├── TripForm.jsx                 the form (Where / When / Who), field errors, live day count
+│   ├── GenerationStatus.jsx         ErrorBanner (chosen by error code) and LoadingPanel (skeleton, Cancel)
+│   ├── ItineraryView.jsx            the plan: title, AI notice, summary, notes, day timeline
+│   ├── DayNav.jsx                   day navigator: sticky chip row (mobile) / side list (lg), client
+│   ├── result-layout.js             grid and date formatters shared by the result and its skeleton
+│   ├── SiteNav.jsx                  sticky nav, condenses after the hero (client)
+│   ├── Hero.jsx, InfoSections.jsx, SiteFooter.jsx   static (server components)
+│   ├── icons.jsx                    inline SVG icons (Lucide paths, ISC)
+│   └── brand.js                     product name
 ├── hooks/
 │   └── useTripGeneration.js         submit state machine: idle → submitting → success | error; cooldown; abort
 └── api/
@@ -585,8 +593,24 @@ stateDiagram-v2
 | `AI_REFUSED` | Banner asking the user to check the destination |
 | `SERVICE_UNAVAILABLE` | Banner saying the service is unavailable |
 
-- Visual design, copy and layout are otherwise unchanged. The only new control is a cancel button in the
-  loading panel.
+- Banner titles and messages are fixed per code (titles in `GenerationStatus.jsx`, messages from
+  `lib/domain/error-codes.js`); the browser tests check them.
+- Focus, so keyboard and screen-reader users never lose their place (UX_RESEARCH 5.2):
+
+| State change | Focus moves to |
+|---|---|
+| submit (button becomes disabled) | Cancel |
+| cancel | the submit button, once it is enabled again |
+| success | the trip title (`#trip-title`); the plan is scrolled into view and "Your N-day plan is ready." is announced |
+| `VALIDATION_FAILED` with a field | that field (`aria-invalid`, message linked with `aria-describedby`) |
+| any other error | the `role="alert"` banner |
+| "Plan Another Trip" | the Area field; the planner is scrolled into view |
+| a day in the day navigator | that day's heading |
+
+- JS scrolling checks `prefers-reduced-motion`; CSS animation runs only under `motion-safe:`.
+- Visual design: `docs/design/DESIGN_SYSTEM.md` (tokens, type, components) and `docs/design/UX_RESEARCH.md`
+  (why). Tokens live in the `@theme` block of `app/globals.css`; components use tokens, never raw colours.
+- Nothing rendered depends on the current time: `today`, the elapsed seconds and the observers run in effects.
 
 ---
 

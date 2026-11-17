@@ -39,8 +39,10 @@ The `--conditions=react-server` flag makes `import 'server-only'` a no-op outsid
 
 ```
 app/                      presentation
-  page.jsx                composes the form, status and result
-  components/             TripForm, GenerationStatus, ItineraryView (presentational)
+  page.jsx                server component: nav, hero, planner, "How it works", footer
+  not-found.jsx           designed 404
+  components/             Planner (the client island) + presentational TripForm, GenerationStatus,
+                          ItineraryView, DayNav, SiteNav, Hero, InfoSections, SiteFooter, icons
   hooks/useTripGeneration submit state machine, cooldown, cancel
   api/trips|health|usage  route handlers: HTTP adapters only, no business logic
 lib/domain/               PURE: dates, request validation, itinerary validation, error codes.
@@ -92,6 +94,18 @@ wrong layer; do not disable the rule.
   response body, and a route test.
 - Strict JSON mode is **not** a guarantee on Groq: about 1 in 5 measured generations were rejected for a schema
   error. The adapter recovers the itinerary from `error.failed_generation`; do not remove that path.
+
+## UI and design
+
+- Source of truth: `docs/design/DESIGN_SYSTEM.md` (tokens, type, components) and `docs/design/UX_RESEARCH.md`
+  (why). Tokens are in the `@theme` block of `app/globals.css`. Skill: `ui-design-system`; agents:
+  `ui-engineer` (builds), `ui-ux-researcher` (research and critique).
+- No emoji, gradients outside the hero, heavy shadows or raw Tailwind palette colours. Saffron (the accent)
+  only for the primary button, the hero's key words and markers; never as text on a light background.
+- No fabricated claims: no logos, user counts, ratings or testimonials. Only what the product does.
+- Fonts through `next/font`, icons as inline SVG; nothing loaded from another host (CSP).
+- Screenshots of every screen at 1440 and 375 px, with `/api/trips` mocked:
+  `npx next start -p 3300` then `node scripts/screenshots.mjs --base http://localhost:3300 --out <dir>`.
 
 ## Testing
 
