@@ -261,7 +261,7 @@ desktop type sizes), `xl` 1280.
 | Hero | top 96 (nav 64 + 32), bottom 64 including the 24 overlap | nav 72, then a box at least 576 tall with the copy and the visual centred in it, then the 64 overlap |
 | Hero stack | badge→h1 12, h1→subtext 12, subtext→facts 32 | badge→h1 12, h1→subtext 12, subtext→facts 40 |
 | Planner panel | padding 20 (groups 24 apart, fields 16 apart) | padding 32; one 3-column grid, 16 gutter, rows 24 apart |
-| Result | 64 below the planner; title→notice 16, notice→chips 24, chips→day chips 32, notes→days 48, day→day 48, stop→stop 24 | 96 below the planner; chips→columns 48; navigator left, notes and days in the right column |
+| Result | 64 below the planner; title→notice 16, notice→chips 24, chips→day chips 32, notes→days 48, day→day 48, stop→stop 16 | 96 below the planner; chips→columns 48; navigator left, notes and days in the right column |
 | Other sections | 64 top and bottom | 96 top and bottom |
 | Footer | 32 | 32 |
 
@@ -466,16 +466,28 @@ width fitted to the text up to `max-w-reading`, 16 px info icon in `muted`, the 
 
 ### 7.10 Timeline (stops of a day)
 
-- **Day header:** `h3` "Day 1" (exact, tested), then the long date and the day's area in `small` `muted`
-  ("Thursday 26 Nov · Alfama and Baixa"), a 1 px `hairline` rule below. No coloured band, no emoji.
-- **Grid per stop:** time column 64 px (52 at 375) | rail 24 px (20 at 375) | content.
-- **Time:** `small` 600 `ink` `tabular-nums`, right-aligned. Missing time: "—" with sr-only "Time not set".
-- **Rail and dot:** 1 px `hairline` vertical rail; dot 10 px = 8 px `saffron` fill + 1 px `night` ring
-  (16.12-17.99:1), aligned to the time's first line.
-- **Content:** `h4` in `title`; description in `body` `muted`; venue line in `small` `ink` with a 16 px
-  map-pin icon in `muted`, `overflow-wrap: anywhere`; tip as an inset row: 2 px left rule in `control`,
-  "Tip" in `caption` `muted`, text in `small` `ink`.
-- 24 px between stops. No card per stop, no hover colour, no scale.
+Each level of the model's output has its own treatment, so a reader can tell the heading, the place, the
+description and the tip apart at a glance. Geometry is shared with the skeleton in `result-layout.js`.
+
+- **"Good to know" panel:** `surface` fill, 1 px `hairline` border, `rounded-panel`, padding 20 (24 from
+  `sm`). Heading "Good to know" in `small` 600 `ink` with a 16 px compass icon in `muted`; the notes in `lead`
+  at weight 400 `ink`.
+- **Day header:** the long date as an eyebrow in `caption` uppercase, wider tracking, `muted`
+  ("FRIDAY 27 NOV"); under it the `h3` "Day 1" (exact, tested) with the day's area beside it on the same
+  baseline in `lead` `muted` (a separate element, not part of the heading); the stop count ("5 stops") in
+  `small` `muted` at the right. A 1 px `hairline` rule below. No coloured band, no emoji.
+- **Grid per stop:** time column 64 px (52 at 375) | rail 24 px (20 at 375) | card.
+- **Card:** `surface` fill, 1 px `hairline` border, `rounded-panel`, padding 16, 4 px (8 from `sm`) from the
+  rail. No shadow, no hover colour, no scale; cards are not interactive.
+- **Time:** `small` 600 `ink` `tabular-nums`, right-aligned, centred on the card's first line (29 px from the
+  card top). Missing time: "—" with sr-only "Time not set".
+- **Rail and dot:** 1 px `hairline` vertical rail from dot centre to dot centre; dot 10 px = 8 px `saffron`
+  fill + 1 px `night` ring (16.12-17.99:1), centred on the card's first line.
+- **Card content, in order:** `h4` in `title` (600 `ink`); the venue directly under it as its subtitle in
+  `small` `muted` with a 16 px map-pin icon, `overflow-wrap: anywhere`; the description in `body` at weight
+  400 `ink`, 12 px below; the tip on a `sunken` inset (`rounded-card`, padding 10 / 12) with a 16 px
+  lightbulb icon in `muted`, "Tip" in `small` 600 `ink` and the text in `small` 400 `ink`.
+- 16 px between stops.
 
 ### 7.11 Day navigator
 

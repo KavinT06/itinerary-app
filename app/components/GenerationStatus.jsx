@@ -4,7 +4,7 @@
 // Presentational: the elapsed seconds and the day labels come in as props (Planner owns the timer).
 
 import { AlertCircleIcon, AlertTriangleIcon } from './icons.jsx';
-import { RESULT_GRID, RESULT_MAIN, RESULT_SIDE, STOP_GRID, RAIL_LEFT } from './result-layout.js';
+import { RESULT_GRID, RESULT_MAIN, RESULT_SIDE, STOP_GRID, STOP_LIST, STOP_CARD, STOP_TIME, STOP_DOT, STOP_RAIL, NOTES_PANEL } from './result-layout.js';
 
 // Every code in lib/domain/error-codes.js, plus the browser-only NETWORK, renders through this one
 // banner. Codes not listed (AI_INVALID_RESPONSE, AI_UNAVAILABLE, INTERNAL and the request-shape
@@ -113,23 +113,23 @@ function SkeletonDay({ day }) {
     return (
         <div>
             <div className="border-b border-hairline pb-4">
-                <p className="text-h3-m text-ink lg:text-h3">Day {day.day}</p>
-                <p className="mt-1 flex items-center gap-2 text-small text-muted">
-                    <span className="tabular-nums">{day.long}</span>
-                    <span className="h-2.5 w-20 rounded-full bg-hairline" />
+                <p className="text-caption tracking-wider text-muted uppercase tabular-nums">{day.long}</p>
+                <p className="mt-1 flex items-center gap-3">
+                    <span className="text-h3-m text-ink lg:text-h3">Day {day.day}</span>
+                    <span className="h-3 w-24 rounded-full bg-hairline" />
                 </p>
             </div>
-            <ol className="mt-6 space-y-6">
+            <ol className={`mt-6 ${STOP_LIST}`}>
                 {SKELETON_ROWS.map(([title, text, venue], i) => (
                     <li key={i} className={`relative ${STOP_GRID}`}>
-                        {i < SKELETON_ROWS.length - 1 && <span className={`absolute top-3 -bottom-9 w-px bg-hairline ${RAIL_LEFT}`} />}
-                        <Bar line="h-6" bar="h-3" width="2.5rem" className="justify-end" />
-                        <span className="relative z-10 mx-auto mt-1.75 size-2.5 rounded-full border border-control bg-paper" />
-                        <span className="min-w-0 pl-2">
+                        {i < SKELETON_ROWS.length - 1 && <span className={STOP_RAIL} />}
+                        <Bar line="h-5" bar="h-3" width="2.5rem" className={`justify-end ${STOP_TIME} box-content`} />
+                        <span className={`${STOP_DOT} border border-control bg-paper`} />
+                        <span className={STOP_CARD}>
                             <Bar bar="h-4" width={`${title}%`} />
-                            <Bar width="100%" className="mt-1" />
+                            <Bar line="h-5" width={`${venue}%`} className="mt-1" />
+                            <Bar width="100%" className="mt-3" />
                             <Bar width={`${text}%`} />
-                            <Bar line="h-5" width={`${venue}%`} className="mt-2" />
                         </span>
                     </li>
                 ))}
@@ -184,8 +184,8 @@ export function LoadingPanel({ onCancel, elapsed = 0, days = [], cancelRef }) {
             </div>
 
             <div aria-hidden="true" className={`mt-8 motion-safe:animate-pulse-soft lg:mt-12 ${hasNav ? RESULT_GRID : ''}`}>
-                {/* The notes' shape: a small label and three lines of lead text. */}
-                <div className={`max-w-reading ${hasNav ? `${RESULT_MAIN} lg:row-start-1` : ''}`}>
+                {/* The notes' shape: a small label and three lines of lead text, on the notes panel. */}
+                <div className={`max-w-reading ${NOTES_PANEL} ${hasNav ? `${RESULT_MAIN} lg:row-start-1` : ''}`}>
                     <Bar line="h-5" bar="h-2.5" width="6rem" />
                     <Bar line="h-6.5 lg:h-7.5" bar="h-3.5" width="100%" className="mt-1" />
                     <Bar line="h-6.5 lg:h-7.5" bar="h-3.5" width="92%" />
