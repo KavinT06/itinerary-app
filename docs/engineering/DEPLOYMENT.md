@@ -1,6 +1,6 @@
 # Deployment
 
-How to configure, deploy, check and roll back the AI Travel Planner on Vercel.
+How to configure, deploy, check and roll back the Itinera (AI travel planner) on Vercel.
 
 - **Platform:** Vercel, Node.js 22+ (`engines` in `package.json`). No change of platform is planned.
 - **External services:** Groq (required), Upstash Redis (optional, recommended), GitHub Actions (CI).

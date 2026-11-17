@@ -13,11 +13,11 @@ const DESCRIPTION =
   "Day-by-day travel plans for trips up to 14 days, with timed stops and an estimated budget. No account needed.";
 
 export const metadata = {
-  title: "AI Travel Planner · Day-by-day travel plans",
+  title: "Itinera · Day-by-day travel plans",
   description: DESCRIPTION,
   keywords: ["travel planner", "itinerary", "trip planner", "travel"],
   openGraph: {
-    title: "AI Travel Planner · Day-by-day travel plans",
+    title: "Itinera · Day-by-day travel plans",
     description: DESCRIPTION,
     type: "website",
   },

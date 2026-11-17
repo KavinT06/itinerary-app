@@ -2,7 +2,7 @@
 // /api/trips is mocked at the network layer: this never calls the real API or spends AI quota.
 //
 //   npm run build && npx next start -p 3300
-//   node scripts/screenshots.mjs --base http://localhost:3300 --out docs/design/screenshots/after
+//   node scripts/screenshots.mjs --base http://localhost:3300 --out docs/design/screenshots
 //   node scripts/screenshots.mjs --base ... --out ... --only landing,result --widths 375
 //
 // Form fields are found by id (#name, #startDate, #endDate, #area, #city, #state).
@@ -15,7 +15,7 @@ const args = Object.fromEntries(
     process.argv.slice(2).reduce((pairs, arg, i, all) => (arg.startsWith('--') ? [...pairs, [arg.slice(2), all[i + 1]]] : pairs), []),
 );
 const BASE = args.base ?? 'http://localhost:3300';
-const OUT = args.out ?? 'docs/design/screenshots/current';
+const OUT = args.out ?? 'docs/design/screenshots';
 const WIDTHS = (args.widths ?? '1440,375').split(',').map(Number);
 const ONLY = args.only ? new Set(args.only.split(',')) : null;
 

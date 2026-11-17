@@ -60,7 +60,8 @@ export function useTripGeneration() {
                 field: err.field,
                 retryAfterSeconds: err.retryAfterSeconds,
             });
-            if (err.code === 'VALIDATION_FAILED') nextCooldown = 0;
+            // No countdown where waiting will not help: fix the input, or come back later (LLD section 8).
+            if (err.code === 'VALIDATION_FAILED' || err.code === 'AI_QUOTA_EXHAUSTED') nextCooldown = 0;
             else if (err.retryAfterSeconds) nextCooldown = Math.min(MAX_COUNTDOWN_SECONDS, Math.max(nextCooldown, err.retryAfterSeconds));
         } finally {
             if (abortRef.current === controller) {

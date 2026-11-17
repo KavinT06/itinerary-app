@@ -95,7 +95,7 @@ Derived blends (not tokens; written as `color-mix()` or alpha utilities, listed 
 ### 2.2 Contrast
 
 Computed with a WCAG 2.x relative-luminance script and sRGB alpha blends:
-`node docs/design/contrast.mjs` prints this table. Change a token there and here together, and re-run it. Text needs
+`node scripts/contrast.mjs` prints this table. Change a token there and here together, and re-run it. Text needs
 4.5:1; large text and UI boundaries (control borders, focus ring, timeline-dot shape) need 3:1. "n/a" rows
 are reference values that justify a rule.
 

@@ -6,7 +6,7 @@ one disagree on a value, `DESIGN_SYSTEM.md` wins; this document records the reas
 
 Inputs:
 
-- An audit of the current UI from the "before" screenshots (`screenshots/before/`, every screen at 1440 px
+- An audit of the current UI from the "before" screenshots (regenerate with `scripts/screenshots.mjs`; not stored in git, every screen at 1440 px
   and 375 px) and from the frontend code (`app/page.jsx`, `app/layout.js`, `app/globals.css`,
   `app/components/*`, `app/hooks/useTripGeneration.js`, `test/e2e/trip.spec.js`).
 - A measured style study of greatify.ai, read with `getComputedStyle` in headless Chromium at 1440 px and
@@ -58,92 +58,68 @@ change.
 ## 2. Current UI audit
 
 Severity: **blocker** (fails WCAG AA or breaks the task), **major** (clearly hurts the task or the
-credibility of the product), **minor** (polish). Each finding links the before screenshot that shows it.
+credibility of the product), **minor** (polish). Each finding names the before screenshot that shows it.
 
 ### 2.1 Screens
 
-Landing at desktop and phone width:
-
-![Landing, desktop](screenshots/before/landing-1440.jpg)
-![Landing, 375 px](screenshots/before/landing-375.jpg)
-
-Loading:
-
-![Loading, desktop](screenshots/before/loading-1440.jpg)
-![Loading, 375 px](screenshots/before/loading-375.jpg)
-
-Errors:
-
-![Validation error, 375 px](screenshots/before/error-validation-375.jpg)
-![Service busy, desktop](screenshots/before/error-busy-1440.jpg)
-![Quota exhausted, desktop](screenshots/before/error-quota-1440.jpg)
-
-Result:
-
-![Result, desktop](screenshots/before/result-1440.jpg)
-![Result, 375 px](screenshots/before/result-375.jpg)
-
-404:
-
-![Not found, desktop](screenshots/before/not-found-1440.jpg)
-
-Other captures in the same folder: `form-filled-*`, `error-validation-1440`, `error-busy-375`,
-`error-quota-375`, `not-found-375`.
+The "before" screenshots (landing, form, validation error, loading, busy and quota errors, result and 404, each
+at 1440 and 375 px) are not stored in git. Check out the commit before the redesign, build it and run
+`node scripts/screenshots.mjs --base http://localhost:3300 --out docs/design/screenshots/before` to recreate them.
 
 ### 2.2 Visual identity (why it reads as AI-made)
 
 | # | Severity | Problem | Where | Evidence |
 |---|---|---|---|---|
-| 1 | Major | **Emoji used as icons everywhere.** Three in the hero, one per section heading (👤 📅 📍), inside the inputs (👨‍💼 🛫 🛬), ✨🚀 and ⏳ on the button, ⚠️/❌ in banners, 🎉 📍 📅 👤 💰 ℹ️ 📋 💡 in the result, 🌅/☀️/🌃 per day. They render as the OS emoji set, so the product looks different on every platform. This is the strongest template signal on the page. | All screens | [landing-1440](screenshots/before/landing-1440.jpg), [result-1440](screenshots/before/result-1440.jpg) |
-| 2 | Major | **Five competing multi-stop gradients.** Page background indigo→purple→pink; gradient-text h1 (`page.jsx`); purple→pink→blue submit button (`TripForm.jsx:106`); gradient-text trip title; indigo→purple→pink day headers; purple→pink time tiles. No single focal point. | All screens | [landing-1440](screenshots/before/landing-1440.jpg), [result-1440](screenshots/before/result-1440.jpg) |
-| 3 | Major | **No design tokens; random palette.** `globals.css` defines only background and foreground. Components use purple, pink, blue, indigo, amber, yellow, green, orange and gray directly. Each form section has its own focus colour (purple, pink, blue: `TripForm.jsx:50,68,93`), so colour carries no meaning. | All screens | [form-filled-1440](screenshots/before/form-filled-1440.jpg) |
-| 4 | Major | **Geist is downloaded but probably never applied.** `layout.js` sets `--font-geist-sans` with a class on `<body>`; Tailwind v4 preflight sets `font-family` on `html` from `--default-font-family`, which resolves on `:root` where the variable is undefined. The page renders in the system font and looks like the default 404. Inferred from code; confirm with `getComputedStyle(document.body).fontFamily`. | All screens | [landing-1440](screenshots/before/landing-1440.jpg) vs [not-found-1440](screenshots/before/not-found-1440.jpg) |
-| 5 | Major | **Heavy shadows and cards inside cards.** Form and result panels are `rounded-3xl shadow-2xl`; each day card is `shadow-xl`; each activity is a grey card inside it; each time tile is `shadow-lg`; each tip is a yellow callout inside the activity. Four levels of nested boxes. | Result | [result-1440](screenshots/before/result-1440.jpg) |
-| 6 | Major | **No typographic system.** h1 and trip title are `font-black` (900); section headings are `text-2xl font-bold` for single fields; labels are small and light next to 24 px headings; no tracking; times without `tabular-nums`. | Landing, result | [landing-1440](screenshots/before/landing-1440.jpg) |
-| 7 | Minor | **Hover effects imply interactivity that is not there.** Summary cards `hover:scale-105`, activities `hover:bg-purple-50`, locations in purple-700 that look like links, submit `hover:scale-[1.02]`. | Result, form | [result-1440](screenshots/before/result-1440.jpg) |
-| 8 | Minor | **Everything is centred** (hero, trip header, notice, reset). At 1440 px about 200 px of empty gradient sits on each side of a single white card. | Landing | [landing-1440](screenshots/before/landing-1440.jpg) |
+| 1 | Major | **Emoji used as icons everywhere.** Three in the hero, one per section heading (👤 📅 📍), inside the inputs (👨‍💼 🛫 🛬), ✨🚀 and ⏳ on the button, ⚠️/❌ in banners, 🎉 📍 📅 👤 💰 ℹ️ 📋 💡 in the result, 🌅/☀️/🌃 per day. They render as the OS emoji set, so the product looks different on every platform. This is the strongest template signal on the page. | All screens | `landing-1440`, `result-1440` |
+| 2 | Major | **Five competing multi-stop gradients.** Page background indigo→purple→pink; gradient-text h1 (`page.jsx`); purple→pink→blue submit button (`TripForm.jsx:106`); gradient-text trip title; indigo→purple→pink day headers; purple→pink time tiles. No single focal point. | All screens | `landing-1440`, `result-1440` |
+| 3 | Major | **No design tokens; random palette.** `globals.css` defines only background and foreground. Components use purple, pink, blue, indigo, amber, yellow, green, orange and gray directly. Each form section has its own focus colour (purple, pink, blue: `TripForm.jsx:50,68,93`), so colour carries no meaning. | All screens | `form-filled-1440` |
+| 4 | Major | **Geist is downloaded but probably never applied.** `layout.js` sets `--font-geist-sans` with a class on `<body>`; Tailwind v4 preflight sets `font-family` on `html` from `--default-font-family`, which resolves on `:root` where the variable is undefined. The page renders in the system font and looks like the default 404. Inferred from code; confirm with `getComputedStyle(document.body).fontFamily`. | All screens | `landing-1440` vs `not-found-1440` |
+| 5 | Major | **Heavy shadows and cards inside cards.** Form and result panels are `rounded-3xl shadow-2xl`; each day card is `shadow-xl`; each activity is a grey card inside it; each time tile is `shadow-lg`; each tip is a yellow callout inside the activity. Four levels of nested boxes. | Result | `result-1440` |
+| 6 | Major | **No typographic system.** h1 and trip title are `font-black` (900); section headings are `text-2xl font-bold` for single fields; labels are small and light next to 24 px headings; no tracking; times without `tabular-nums`. | Landing, result | `landing-1440` |
+| 7 | Minor | **Hover effects imply interactivity that is not there.** Summary cards `hover:scale-105`, activities `hover:bg-purple-50`, locations in purple-700 that look like links, submit `hover:scale-[1.02]`. | Result, form | `result-1440` |
+| 8 | Minor | **Everything is centred** (hero, trip header, notice, reset). At 1440 px about 200 px of empty gradient sits on each side of a single white card. | Landing | `landing-1440` |
 | 9 | Minor | **Starter-template leftovers.** `app/favicon.ico` is the create-next-app default (25,931 bytes); `public/` still holds `file.svg`, `globe.svg`, `next.svg`, `vercel.svg`, `window.svg`. "AI Travel Planner" is a category, not a product name. | Tab, `public/` | — |
-| 10 | Major | **The 404 is the unstyled Next.js default.** No `app/not-found.jsx`, no brand, no way back to the planner. | 404 | [not-found-1440](screenshots/before/not-found-1440.jpg), [not-found-375](screenshots/before/not-found-375.jpg) |
+| 10 | Major | **The 404 is the unstyled Next.js default.** No `app/not-found.jsx`, no brand, no way back to the planner. | 404 | `not-found-1440`, `not-found-375` |
 
 ### 2.3 Accessibility
 
 | # | Severity | Problem | Measured | Evidence |
 |---|---|---|---|---|
-| 11 | **Blocker** | Time tiles: white bold 14 px text on purple-400→pink-400. | **2.79:1 / 2.76:1** (needs 4.5:1) | [result-1440](screenshots/before/result-1440.jpg), [result-375](screenshots/before/result-375.jpg) |
-| 12 | **Blocker** | Day header subtitle ("Thu, Nov 26, 2026 • Alfama and Baixa"): 18 px regular, white at 90% on purple-500 with a 10% white overlay. Not large text. The "Day 1" title passes only as large text (3.62-3.87:1). | **3.22:1** (needs 4.5:1) | [result-1440](screenshots/before/result-1440.jpg) |
-| 13 | Major | Input boundaries almost invisible: gray-200 border on white and on the gray-50 fill (WCAG 1.4.11 needs 3:1 to identify a control). | **1.24:1 / 1.18:1** | [landing-1440](screenshots/before/landing-1440.jpg) |
-| 14 | Major | Invalid state is colour only: amber-500 border on amber-50; no inline message, no `aria-describedby`, focus not moved. At 375 px the highlighted Return field is about 1,000 CSS px above the banner that explains it. | **2.06:1** | [error-validation-375](screenshots/before/error-validation-375.jpg), [error-validation-1440](screenshots/before/error-validation-1440.jpg) |
-| 15 | Major | The live hint "You can try again in N seconds." is inside `role="alert"` (`GenerationStatus.jsx:55-64`), so screen readers may re-read the alert on every tick. | — | [error-busy-1440](screenshots/before/error-busy-1440.jpg) |
+| 11 | **Blocker** | Time tiles: white bold 14 px text on purple-400→pink-400. | **2.79:1 / 2.76:1** (needs 4.5:1) | `result-1440`, `result-375` |
+| 12 | **Blocker** | Day header subtitle ("Thu, Nov 26, 2026 • Alfama and Baixa"): 18 px regular, white at 90% on purple-500 with a 10% white overlay. Not large text. The "Day 1" title passes only as large text (3.62-3.87:1). | **3.22:1** (needs 4.5:1) | `result-1440` |
+| 13 | Major | Input boundaries almost invisible: gray-200 border on white and on the gray-50 fill (WCAG 1.4.11 needs 3:1 to identify a control). | **1.24:1 / 1.18:1** | `landing-1440` |
+| 14 | Major | Invalid state is colour only: amber-500 border on amber-50; no inline message, no `aria-describedby`, focus not moved. At 375 px the highlighted Return field is about 1,000 CSS px above the banner that explains it. | **2.06:1** | `error-validation-375`, `error-validation-1440` |
+| 15 | Major | The live hint "You can try again in N seconds." is inside `role="alert"` (`GenerationStatus.jsx:55-64`), so screen readers may re-read the alert on every tick. | — | `error-busy-1440` |
 | 16 | Major | `scrollIntoView({behavior:'smooth'})` (`page.jsx:28`) and `window.scrollTo({behavior:'smooth'})` (`page.jsx:49`) run under `prefers-reduced-motion`; `motion-safe:` classes do not cover JS scrolling. | — | code |
 | 17 | Major | Success is silent: the polite live region just empties; focus is not moved to the trip; nothing says the plan is ready. | — | code |
-| 18 | Minor | Disabled button countdown at `opacity-70`: "Please wait 20s" is status the user must read. Disabled controls are exempt, the information is not. | **3.12-3.61:1** | [loading-375](screenshots/before/loading-375.jpg), [error-quota-375](screenshots/before/error-quota-375.jpg) |
-| 19 | Minor | Focus is `outline-none` plus a border colour that changes per section; no ring on inputs. | 3.58-4.12:1 | [form-filled-1440](screenshots/before/form-filled-1440.jpg) |
-| 20 | Minor | Placeholder text about 3.0:1; the 14-day helper is not tied to the date inputs with `aria-describedby`. Heading levels are odd: the error banner is an h3 inside the "Dream Destination" h2; activities go down to h5. | ~3.0:1 | [landing-1440](screenshots/before/landing-1440.jpg) |
+| 18 | Minor | Disabled button countdown at `opacity-70`: "Please wait 20s" is status the user must read. Disabled controls are exempt, the information is not. | **3.12-3.61:1** | `loading-375`, `error-quota-375` |
+| 19 | Minor | Focus is `outline-none` plus a border colour that changes per section; no ring on inputs. | 3.58-4.12:1 | `form-filled-1440` |
+| 20 | Minor | Placeholder text about 3.0:1; the 14-day helper is not tied to the date inputs with `aria-describedby`. Heading levels are odd: the error banner is an h3 inside the "Dream Destination" h2; activities go down to h5. | ~3.0:1 | `landing-1440` |
 
 ### 2.4 Layout at 375 px
 
 | # | Severity | Problem | Evidence |
 |---|---|---|---|
-| 21 | Major | **Nesting crushes the activity column.** Padding stack main 16 + article 24 + `ol` 16 + `li` 16 per side, a 64 px time tile and a 16 px gap leave about **151 CSS px** for activity text; the Tip box inside is about 120 px. Titles wrap to 2-3 lines; one activity is about 330 px tall; a 3-day trip is about **8,700 CSS px**. A 14-day trip would be roughly four times that. | [result-375](screenshots/before/result-375.jpg) |
-| 22 | Major | **The summary echoes the input in four huge cards** (destination, dates, traveller, budget), about 650 px before the first useful line. The estimated budget, the only new number, has the same weight as the traveller's name. | [result-375](screenshots/before/result-375.jpg) |
-| 23 | Minor | Dates are inconsistent: raw ISO "2026-11-26 → 2026-11-28" in the summary, localised "Thu, Nov 26, 2026" in day headers. | [result-1440](screenshots/before/result-1440.jpg) |
-| 24 | Minor | The hero pushes the task down: about 260 px at 1440 and about 470 px at 375 before the first field. | [landing-375](screenshots/before/landing-375.jpg) |
-| 25 | Minor | The form is over-structured: three h2 sections with coloured rules for six inputs; "About You" is a section for one field. The form is about 1,200 px tall at 375. | [landing-375](screenshots/before/landing-375.jpg) |
-| 26 | Minor | Native date inputs show "dd-----yyyy" with an emoji crammed beside them, which makes the browser default look broken. | [landing-375](screenshots/before/landing-375.jpg) |
+| 21 | Major | **Nesting crushes the activity column.** Padding stack main 16 + article 24 + `ol` 16 + `li` 16 per side, a 64 px time tile and a 16 px gap leave about **151 CSS px** for activity text; the Tip box inside is about 120 px. Titles wrap to 2-3 lines; one activity is about 330 px tall; a 3-day trip is about **8,700 CSS px**. A 14-day trip would be roughly four times that. | `result-375` |
+| 22 | Major | **The summary echoes the input in four huge cards** (destination, dates, traveller, budget), about 650 px before the first useful line. The estimated budget, the only new number, has the same weight as the traveller's name. | `result-375` |
+| 23 | Minor | Dates are inconsistent: raw ISO "2026-11-26 → 2026-11-28" in the summary, localised "Thu, Nov 26, 2026" in day headers. | `result-1440` |
+| 24 | Minor | The hero pushes the task down: about 260 px at 1440 and about 470 px at 375 before the first field. | `landing-375` |
+| 25 | Minor | The form is over-structured: three h2 sections with coloured rules for six inputs; "About You" is a section for one field. The form is about 1,200 px tall at 375. | `landing-375` |
+| 26 | Minor | Native date inputs show "dd-----yyyy" with an emoji crammed beside them, which makes the browser default look broken. | `landing-375` |
 
 ### 2.5 Flow and state presentation
 
 | # | Severity | Problem | Evidence |
 |---|---|---|---|
-| 27 | Major | **Loading is a small box under the button.** The page stays the filled form; fields remain editable during the request, so the form can disagree with the plan that comes back; progress is shown twice (button spinner and box); nothing shows elapsed time or what is being produced. | [loading-1440](screenshots/before/loading-1440.jpg), [loading-375](screenshots/before/loading-375.jpg) |
-| 28 | Major | **The result is appended below a still-expanded form** with the old values and a disabled "Please wait 14s" button, so the page looks half-reset. Two competing "next" paths: edit the form above, or "Plan Another Trip" at the very bottom (which also clears the name). | [result-1440](screenshots/before/result-1440.jpg) |
-| 29 | Major | **The quota error contradicts the button.** The banner says "come back later"; the button counts down "Please wait 15s" and then re-enables, inviting a retry that will fail. | [error-quota-1440](screenshots/before/error-quota-1440.jpg) |
-| 30 | Major | **One wait is shown three ways, and they drift.** Server message "Please try again in 20 seconds" (static, goes stale), hint "You can try again in N seconds" (live), button "Please wait Ns" (live). | [error-busy-1440](screenshots/before/error-busy-1440.jpg), [error-busy-375](screenshots/before/error-busy-375.jpg) |
-| 31 | Major | **The AI notice is not prominent:** small gray-500 centred text at the very end, after about 8,700 px on a phone. | [result-1440](screenshots/before/result-1440.jpg), [result-375](screenshots/before/result-375.jpg) |
-| 32 | Minor | Day emoji are chosen by index (first, middle, last), not by content. | [result-1440](screenshots/before/result-1440.jpg) |
-| 33 | Minor | The landing never says what you get (five timed stops a day, an estimated budget, up to 14 days, about 5-30 s, no account) or why the name is asked for. | [landing-1440](screenshots/before/landing-1440.jpg) |
-| 34 | Minor | Long trips have no navigation: no day index or jump links; no print stylesheet. | [result-375](screenshots/before/result-375.jpg) |
-| 35 | Minor | Three required destination fields add friction: someone going to "Kyoto" must invent an Area. Locked by the e2e labels and the request body; owner decision. | [landing-1440](screenshots/before/landing-1440.jpg) |
+| 27 | Major | **Loading is a small box under the button.** The page stays the filled form; fields remain editable during the request, so the form can disagree with the plan that comes back; progress is shown twice (button spinner and box); nothing shows elapsed time or what is being produced. | `loading-1440`, `loading-375` |
+| 28 | Major | **The result is appended below a still-expanded form** with the old values and a disabled "Please wait 14s" button, so the page looks half-reset. Two competing "next" paths: edit the form above, or "Plan Another Trip" at the very bottom (which also clears the name). | `result-1440` |
+| 29 | Major | **The quota error contradicts the button.** The banner says "come back later"; the button counts down "Please wait 15s" and then re-enables, inviting a retry that will fail. | `error-quota-1440` |
+| 30 | Major | **One wait is shown three ways, and they drift.** Server message "Please try again in 20 seconds" (static, goes stale), hint "You can try again in N seconds" (live), button "Please wait Ns" (live). | `error-busy-1440`, `error-busy-375` |
+| 31 | Major | **The AI notice is not prominent:** small gray-500 centred text at the very end, after about 8,700 px on a phone. | `result-1440`, `result-375` |
+| 32 | Minor | Day emoji are chosen by index (first, middle, last), not by content. | `result-1440` |
+| 33 | Minor | The landing never says what you get (five timed stops a day, an estimated budget, up to 14 days, about 5-30 s, no account) or why the name is asked for. | `landing-1440` |
+| 34 | Minor | Long trips have no navigation: no day index or jump links; no print stylesheet. | `result-375` |
+| 35 | Minor | Three required destination fields add friction: someone going to "Kyoto" must invent an Area. Locked by the e2e labels and the request body; owner decision. | `landing-1440` |
 
 ### 2.6 Information architecture today
 

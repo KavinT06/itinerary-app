@@ -1,4 +1,4 @@
-# Low-Level Design — AI Travel Planner
+# Low-Level Design — Itinera (AI travel planner)
 
 - **Status:** Approved by the owner 2026-11-16 ("use your recommendations"). Implemented on branch `feat/groq-migration`; see `docs/engineering/PROJECT_STATUS.md` for what is verified.
 - **Date:** 2026-11-15
@@ -14,6 +14,7 @@ app/                                 PRESENTATION
 ├── layout.js                        Manrope via next/font, metadata
 ├── page.jsx                         server component: nav, hero, planner island, "How it works", footer
 ├── not-found.jsx                    designed 404 (server component)
+├── icon.svg                         favicon (brand mark)
 ├── globals.css                      design tokens (Tailwind 4 @theme), base styles, hero and nav CSS
 ├── components/
 │   ├── Planner.jsx                  the one client island: form state, status, result, focus management

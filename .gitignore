@@ -41,11 +41,18 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# Claude Code project files are shared (they are excluded by a global ignore file on some machines)
-!CLAUDE.md
-!.claude/
-.claude/settings.local.json
+# personal tooling and notes (kept locally, not shared)
+CLAUDE.md
+.claude/
+prompt.md
+PROJECT_STRUCTURE.md
 
-# test output
+# test and design output (regenerate with npm run test:e2e and scripts/screenshots.mjs)
 /test-results/
 /playwright-report/
+/docs/design/screenshots/
+
+# editor settings
+/.vscode/
+
+*.md
