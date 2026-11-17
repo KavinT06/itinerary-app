@@ -1,4 +1,4 @@
-# Production Readiness Report — AI Travel Planner
+# Production Readiness Report — Itinera (AI travel planner)
 
 - **Date:** 2026-11-16
 - **Branch:** `feat/groq-migration`, based on `main` at `89a996d`

@@ -1,4 +1,4 @@
-# High-Level Design — AI Travel Planner
+# High-Level Design — Itinera (AI travel planner)
 
 - **Status:** Approved by the owner 2026-11-16 ("use your recommendations"). Implemented on branch `feat/groq-migration`; see `docs/engineering/PROJECT_STATUS.md` for what is verified.
 - **Date:** 2026-11-15

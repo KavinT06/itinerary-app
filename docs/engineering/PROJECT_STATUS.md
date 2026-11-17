@@ -28,7 +28,7 @@ Updated after every milestone. Last update: 2026-11-17.
 | 10 | Security audit | Done | SECURITY_AUDIT.md; 7 of 8 findings fixed |
 | 11 | Deployment | Done 2026-11-16 | PR #3 merged; production health `ok`; real generation checked after merge |
 | 12 | Clean-up | Mostly done | Gemini code, dependency and setup guide removed; README replaced |
-| 13 | UI redesign | In review (`feat/ui-redesign`) | UX_RESEARCH, DESIGN_SYSTEM, before/checkpoint/after screenshots; 58 browser tests; first-load JS 113 kB |
+| 13 | UI redesign | In review (`feat/ui-redesign`) | UX_RESEARCH, DESIGN_SYSTEM; screenshots regenerable with `scripts/screenshots.mjs` (not stored in git); 58 browser tests; first-load JS 113 kB |
 
 ## Decisions
 
@@ -56,7 +56,6 @@ Updated after every milestone. Last update: 2026-11-17.
 1. Review the UI redesign pull request and its preview deployment, then merge.
 2. Confirm deletion of the old Google key (S-01).
 3. Recommended: Upstash Redis, `ADMIN_TOKEN` (32+ characters), branch protection on `main`.
-4. Optional: a product name ("AI Travel Planner" describes a category; `app/components/brand.js`).
 
 ## Known issues and unverified items
 

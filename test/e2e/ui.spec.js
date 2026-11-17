@@ -238,6 +238,15 @@ test('tabbing through the day chips keeps the focused chip fully visible', async
     }
 });
 
+test('an exhausted daily quota does not start a countdown on the button', async ({ page }) => {
+    await mockTrips(page, () => ({ status: 503, json: { error: "We've reached today's limit for new itineraries. Please come back later.", code: 'AI_QUOTA_EXHAUSTED', retryable: false } }));
+    await fillForm(page);
+    await submitButton(page).click();
+    await expect(page.locator('main').getByRole('alert')).toContainText("Today's limit has been reached");
+    await expect(submitButton(page)).toBeEnabled();
+    await expect(submitButton(page)).not.toContainText(/Please wait/);
+});
+
 test('a 1-day result has no day navigator', async ({ page }) => {
     await mockTrips(page, success);
     await fillForm(page, { start: iso(10), end: iso(10) });

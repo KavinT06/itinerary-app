@@ -7,7 +7,7 @@ import SiteFooter from './components/SiteFooter.jsx';
 import { ArrowRightIcon } from './components/icons.jsx';
 
 export const metadata = {
-    title: 'Page not found · AI Travel Planner',
+    title: 'Page not found · Itinera',
 };
 
 export default function NotFound() {

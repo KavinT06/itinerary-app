@@ -1,4 +1,4 @@
-# AI Travel Planner — engineering guide
+# Itinera (AI travel planner) — engineering guide
 
 A stateless Next.js app. A visitor enters a name, dates and a destination; `POST /api/trips` asks Groq for a
 structured itinerary, validates it, and returns it. No database, no accounts. Deployed on Vercel.

@@ -1,2 +1,2 @@
-// The product name used by the nav, the footer and the page title. Owner to confirm (UX_RESEARCH open question 1).
-export const PRODUCT_NAME = 'AI Travel Planner';
+// The product name used by the nav, the footer and the 404 title. The page title in layout.js uses it too.
+export const PRODUCT_NAME = 'Itinera';
