@@ -46,6 +46,12 @@ next-env.d.ts
 !.claude/
 .claude/settings.local.json
 
-# test output
+# test and design output (regenerate with npm run test:e2e and scripts/screenshots.mjs)
 /test-results/
 /playwright-report/
+/docs/design/screenshots/
+
+# editor settings
+/.vscode/
+
+*.md
