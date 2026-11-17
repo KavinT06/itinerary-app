@@ -1,11 +1,13 @@
 # Project Status
 
-Updated after every milestone. Last update: 2026-11-16.
+Updated after every milestone. Last update: 2026-11-17.
 
 ## Current state
 
-- **Milestones 0–10 complete** on branch `feat/groq-migration`. Milestone 11 (deployment) is waiting on the
-  owner's account steps. Milestone 12 (clean-up) is mostly done early.
+- **Groq migration live in production** (https://superitineraryapp.vercel.app) since PR #3 was merged on
+  2026-11-16; health is `ok` with AI configured, and a real generation was verified after the merge.
+- **UI redesign in review** on branch `feat/ui-redesign` (milestone 13): new design system ("Dusk Horizon",
+  Manrope), every screen redesigned, research and design documents in `docs/design/`.
 - **Release readiness:** see [PRODUCTION_READINESS_REPORT.md](PRODUCTION_READINESS_REPORT.md).
 - **Security:** see [SECURITY_AUDIT.md](SECURITY_AUDIT.md). One owner action open (S-01).
 
@@ -24,8 +26,9 @@ Updated after every milestone. Last update: 2026-11-16.
 | 8 | API contract and observability | Done | Coded errors, request IDs, body cap, JSON logs, usage counters, `/api/health`, `/api/usage` |
 | 9 | Frontend | Done | `useTripGeneration`, `GenerationStatus`, cancel button, Playwright tests |
 | 10 | Security audit | Done | SECURITY_AUDIT.md; 7 of 8 findings fixed |
-| 11 | Deployment | **Waiting on owner** | DEPLOYMENT.md written; production build passes |
+| 11 | Deployment | Done 2026-11-16 | PR #3 merged; production health `ok`; real generation checked after merge |
 | 12 | Clean-up | Mostly done | Gemini code, dependency and setup guide removed; README replaced |
+| 13 | UI redesign | In review (`feat/ui-redesign`) | UX_RESEARCH, DESIGN_SYSTEM, before/checkpoint/after screenshots; 58 browser tests; first-load JS 113 kB |
 
 ## Decisions
 
@@ -37,23 +40,23 @@ Updated after every milestone. Last update: 2026-11-16.
 | D4 Claude Code files in git | Tracked (project `.gitignore` re-includes them) |
 | D5 Browser tests | Playwright |
 
-## Checks last run (2026-11-16)
+## Checks last run (2026-11-17, branch `feat/ui-redesign`)
 
 | Check | Result |
 |---|---|
 | `npm run lint` | Pass |
-| `npm test` | See PRODUCTION_READINESS_REPORT section 4 |
-| `npm run build` | Pass |
-| `npm run test:e2e` | 30 passed |
-| `npm audit` | 0 vulnerabilities |
-| Real Groq generation through the built app | Pass (3 and 14 days) |
+| `npm test` | 173 passed, 0 failed |
+| `npm run build` | Pass; first-load JS for `/` 113 kB (110 kB before the redesign) |
+| `npm run test:e2e` | 58 passed (desktop and 375 px; `trip.spec.js` unchanged, `ui.spec.js` new) |
+| `npm audit --omit=dev` | 0 vulnerabilities |
+| Real Groq generation through the redesigned page (local production build) | Pass: 2 days, 200 in 2.7 s, focus on the trip title, no overflow, no console errors |
 
 ## Waiting on the owner
 
-1. Groq variables in Vercel (Production and Preview); keep `GEMINI_API_KEY` for rollback.
+1. Review the UI redesign pull request and its preview deployment, then merge.
 2. Confirm deletion of the old Google key (S-01).
 3. Recommended: Upstash Redis, `ADMIN_TOKEN` (32+ characters), branch protection on `main`.
-4. Review the pull request and the preview deployment, then merge.
+4. Optional: a product name ("AI Travel Planner" describes a category; `app/components/brand.js`).
 
 ## Known issues and unverified items
 

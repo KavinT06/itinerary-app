@@ -202,7 +202,11 @@ sequenceDiagram
 - A `GenerationStatus` component picks the presentation from the code, so "come back later" and "try again
   in 20 seconds" are no longer the same red banner.
 - No state library is proposed. There is one screen with one request.
-- Visual identity is unchanged.
+- `page.jsx` is a server component; `Planner.jsx` is the one client island for the request flow, plus the
+  nav and the day navigator. Static sections ship no JavaScript.
+- Visual design (redesign, 2026-11): `docs/design/DESIGN_SYSTEM.md` and `docs/design/UX_RESEARCH.md`. No new
+  dependency: the Manrope font comes through `next/font` (self-hosted, CSP `font-src 'self'`) and replaces
+  Geist; icons are inline SVG.
 
 ---
 

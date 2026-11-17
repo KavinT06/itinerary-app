@@ -50,7 +50,7 @@ const config = [
         ]),
     },
     {
-        files: ['lib/client/**', 'app/components/**', 'app/hooks/**', 'app/page.jsx', 'app/layout.js'],
+        files: ['lib/client/**', 'app/components/**', 'app/hooks/**', 'app/page.jsx', 'app/layout.js', 'app/not-found.jsx'],
         rules: {
             ...noEnv,
             ...restrict([

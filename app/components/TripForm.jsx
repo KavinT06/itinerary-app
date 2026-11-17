@@ -1,133 +1,183 @@
-const inputBase =
-    'w-full py-4 rounded-xl border-2 border-gray-200 bg-gray-50 text-gray-800 outline-none focus:bg-white transition-all';
+// The planner form: where, when, who. Presentational: props in, events out.
+// Labels and button texts are a contract with test/e2e/trip.spec.js; keep them exact.
+//
+// One grid for the whole form (three columns from `sm`, 16 px gutter, 24 px between rows):
+// Area | City | State on the first row, the date range across two columns and Full Name in the
+// third on the second, so every edge lines up with the row above.
 
-function Field({ id, label, icon, focus, value, onChange, invalid, ...inputProps }) {
+import { AlertCircleIcon, ArrowRightIcon } from './icons.jsx';
+import { inclusiveDayCount, parseIsoDate } from '../../lib/domain/dates.js';
+
+const CONTROL =
+    'h-12 w-full min-w-0 border border-control px-3 text-body text-ink placeholder:text-muted ' +
+    'transition-colors duration-150 ease-standard read-only:bg-sunken ' +
+    'aria-invalid:border-danger-ink aria-invalid:inset-ring aria-invalid:inset-ring-danger-ink';
+
+const INPUT = `block rounded-control bg-surface ${CONTROL}`;
+
+const LABEL = 'block text-small font-semibold text-ink';
+
+/** "Full Name *": the asterisk is styled, but stays in the label text (the accessible name). */
+function LabelText({ children }) {
     return (
-        <div>
-            <label htmlFor={id} className="block text-sm font-semibold text-gray-700 mb-2">
-                {label}
+        <>
+            {children} <span className="text-muted">*</span>
+        </>
+    );
+}
+
+function FieldError({ id, children }) {
+    return (
+        <p id={id} className="mt-2 flex items-start gap-1.5 text-small text-danger-ink">
+            <AlertCircleIcon size={16} className="mt-0.5" />
+            <span className="min-w-0">{children}</span>
+        </p>
+    );
+}
+
+function Field({ id, label, hint, invalid, error, ...inputProps }) {
+    const errorId = invalid && error ? `${id}-error` : null;
+    const hintId = hint ? `${id}-hint` : null;
+    return (
+        <div className="min-w-0">
+            <label htmlFor={id} className={LABEL}>
+                <LabelText>{label}</LabelText>
             </label>
-            <div className="relative">
-                {icon && (
-                    <span aria-hidden="true" className="absolute left-4 top-1/2 -translate-y-1/2 text-xl">
-                        {icon}
-                    </span>
-                )}
-                <input
-                    id={id}
-                    name={id}
-                    value={value}
-                    onChange={onChange}
-                    aria-invalid={invalid || undefined}
-                    className={`${inputBase} ${icon ? 'pl-12 pr-4' : 'px-4'} ${focus} aria-invalid:border-amber-500 aria-invalid:bg-amber-50`}
-                    {...inputProps}
-                />
-            </div>
+            <input
+                id={id}
+                name={id}
+                aria-invalid={invalid || undefined}
+                aria-describedby={[errorId, hintId].filter(Boolean).join(' ') || undefined}
+                className={`${INPUT} mt-2`}
+                {...inputProps}
+            />
+            {errorId && <FieldError id={errorId}>{error}</FieldError>}
+            {hint && (
+                <p id={hintId} className="mt-2 text-small text-muted">
+                    {hint}
+                </p>
+            )}
         </div>
     );
 }
 
-function SectionHeading({ icon, border, children }) {
+/** The legend names the group for assistive technology; the labels carry the visible hierarchy. */
+function Group({ legend, className = '', children }) {
     return (
-        <div className={`flex items-center space-x-3 pb-4 border-b-2 ${border}`}>
-            <span aria-hidden="true" className="text-3xl">{icon}</span>
-            <h2 className="text-2xl font-bold text-gray-800">{children}</h2>
-        </div>
+        <fieldset className={`min-w-0 ${className}`}>
+            <legend className="sr-only">{legend}</legend>
+            {children}
+        </fieldset>
     );
 }
 
-export default function TripForm({ form, onChange, onSubmit, loading, cooldown, today, limits, invalidInput }) {
+/** "3 days · up to 14" once both dates parse; the plain limit before that. */
+function dayCountHint(startDate, endDate, maxDays) {
+    const start = parseIsoDate(startDate);
+    const end = parseIsoDate(endDate);
+    if (start === null || end === null || end < start) return `Up to ${maxDays} days`;
+    const days = inclusiveDayCount(start, end);
+    return `${days} ${days === 1 ? 'day' : 'days'} · up to ${maxDays}`;
+}
+
+export default function TripForm({ form, onChange, onSubmit, loading, cooldown, today, limits, invalidInput, fieldError, banner }) {
     const disabled = loading || cooldown > 0;
+    const startInvalid = invalidInput === 'startDate';
+    const endInvalid = invalidInput === 'endDate';
+    const dateErrorId = (startInvalid || endInvalid) && fieldError ? 'dates-error' : null;
+    const dateDescribedBy = [dateErrorId, 'dates-hint'].filter(Boolean).join(' ');
+    // While a request is in flight the fields are read-only, so the form cannot drift from the plan
+    // being generated. Not disabled: values stay readable and focusable.
+    const shared = { onChange, readOnly: loading, required: true };
 
     return (
-        <form onSubmit={onSubmit} className="space-y-8">
-            <section className="space-y-6">
-                <SectionHeading icon="👤" border="border-purple-200">About You</SectionHeading>
+        <form onSubmit={onSubmit} className="grid gap-x-4 gap-y-6 sm:grid-cols-3">
+            <Group legend="Where" className="grid gap-x-4 gap-y-4 sm:col-span-3 sm:grid-cols-3">
                 <Field
-                    id="name" invalid={invalidInput === 'name'}
-                    label="Full Name *"
-                    icon="👨‍💼"
-                    focus="focus:border-purple-500"
-                    type="text"
-                    placeholder="John Doe"
-                    autoComplete="name"
-                    maxLength={limits.name}
-                    required
-                    value={form.name}
-                    onChange={onChange}
+                    id="area" invalid={invalidInput === 'area'} error={fieldError}
+                    label="Area" type="text" placeholder="e.g. Alfama"
+                    maxLength={50} value={form.area} {...shared}
                 />
-            </section>
+                <Field
+                    id="city" label="City" type="text" placeholder="e.g. Lisbon"
+                    maxLength={50} value={form.city} {...shared}
+                />
+                <Field
+                    id="state" label="State / Country" type="text" placeholder="e.g. Portugal"
+                    maxLength={45} value={form.state} {...shared}
+                />
+            </Group>
 
-            <section className="space-y-6">
-                <SectionHeading icon="📅" border="border-pink-200">Travel Dates</SectionHeading>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <Field
-                        id="startDate" invalid={invalidInput === 'startDate'}
-                        label="Departure *"
-                        icon="🛫"
-                        focus="focus:border-pink-500"
+            <Group legend="When" className="min-w-0 sm:col-span-2">
+                <div className="date-range grid">
+                    <label htmlFor="startDate" className={LABEL}>
+                        <LabelText>Departure</LabelText>
+                    </label>
+                    <label htmlFor="endDate" className={LABEL}>
+                        <LabelText>Return</LabelText>
+                    </label>
+                    {/* One joined control: each half has its own border and the right half overlaps the
+                        shared edge by 1 px, so only the invalid half turns red (it is raised above its
+                        neighbour) while the outline of the pair stays one piece. */}
+                    <input
+                        id="startDate"
+                        name="startDate"
                         type="date"
                         min={today || undefined}
-                        required
                         value={form.startDate}
-                        onChange={onChange}
+                        aria-invalid={startInvalid || undefined}
+                        aria-describedby={dateDescribedBy}
+                        className={`date-half relative mt-2 rounded-l-control bg-surface aria-invalid:z-10 ${CONTROL} px-2.5 sm:px-3`}
+                        {...shared}
                     />
-                    <Field
-                        id="endDate" invalid={invalidInput === 'endDate'}
-                        label="Return *"
-                        icon="🛬"
-                        focus="focus:border-pink-500"
+                    <input
+                        id="endDate"
+                        name="endDate"
                         type="date"
                         min={form.startDate || today || undefined}
-                        required
                         value={form.endDate}
-                        onChange={onChange}
+                        aria-invalid={endInvalid || undefined}
+                        aria-describedby={dateDescribedBy}
+                        className={`date-half relative mt-2 -ml-px rounded-r-control bg-surface aria-invalid:z-10 ${CONTROL} px-2.5 sm:px-3`}
+                        {...shared}
                     />
                 </div>
-                <p className="text-sm text-gray-500">Trips can be up to {limits.days} days long.</p>
-            </section>
+                {dateErrorId && <FieldError id={dateErrorId}>{fieldError}</FieldError>}
+                {/* Live length of the trip: explains a duration error instead of repeating it. */}
+                <p id="dates-hint" className="mt-2 text-small text-muted">
+                    {dayCountHint(form.startDate, form.endDate, limits.days)}
+                </p>
+            </Group>
 
-            <section className="space-y-6">
-                <SectionHeading icon="📍" border="border-blue-200">Dream Destination</SectionHeading>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <Field id="area" invalid={invalidInput === 'area'} label="Area *" focus="focus:border-blue-500" type="text" placeholder="e.g., Manhattan"
-                        maxLength={50} required value={form.area} onChange={onChange} />
-                    <Field id="city" label="City *" focus="focus:border-blue-500" type="text" placeholder="e.g., New York"
-                        maxLength={50} required value={form.city} onChange={onChange} />
-                    <Field id="state" label="State / Country *" focus="focus:border-blue-500" type="text" placeholder="e.g., USA"
-                        maxLength={45} required value={form.state} onChange={onChange} />
-                </div>
-            </section>
+            <Group legend="Who" className="min-w-0">
+                <Field
+                    id="name" invalid={invalidInput === 'name'} error={fieldError}
+                    label="Full Name" type="text" autoComplete="name"
+                    hint="Shown on your plan only."
+                    maxLength={limits.name} value={form.name} {...shared}
+                />
+            </Group>
 
-            <div className="pt-6">
-                <button
-                    type="submit"
-                    disabled={disabled}
-                    className="w-full relative overflow-hidden rounded-2xl bg-linear-to-r from-purple-600 via-pink-600 to-blue-600 py-5 px-8 text-lg font-bold text-white shadow-2xl transform transition-all duration-300 motion-safe:hover:scale-[1.02] disabled:opacity-70 disabled:cursor-not-allowed focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-purple-400"
-                >
-                    <span className="flex items-center justify-center space-x-3">
+            <div className="sm:col-span-3">
+                {banner}
+                <div className={`flex border-t border-hairline pt-6 sm:justify-end ${banner ? 'mt-6' : ''}`}>
+                    <button
+                        type="submit"
+                        disabled={disabled}
+                        className="inline-flex h-13 w-full items-center justify-center gap-2 rounded-control bg-saffron px-6 text-body font-semibold text-night tabular-nums transition-colors duration-150 ease-standard enabled:hover:bg-saffron-hover disabled:cursor-not-allowed disabled:bg-saffron-disabled disabled:text-ink sm:w-auto sm:min-w-64"
+                    >
                         {loading ? (
-                            <>
-                                <svg aria-hidden="true" className="animate-spin h-6 w-6" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                                </svg>
-                                <span>Generating Itinerary…</span>
-                            </>
+                            <span>Generating Itinerary…</span>
                         ) : cooldown > 0 ? (
-                            <>
-                                <span aria-hidden="true">⏳</span>
-                                <span>Please wait {cooldown}s</span>
-                            </>
+                            <span>Please wait {cooldown}s</span>
                         ) : (
                             <>
-                                <span aria-hidden="true">✨</span>
                                 <span>Generate Itinerary</span>
-                                <span aria-hidden="true">🚀</span>
+                                <ArrowRightIcon size={20} />
                             </>
                         )}
-                    </span>
-                </button>
+                    </button>
+                </div>
             </div>
         </form>
     );

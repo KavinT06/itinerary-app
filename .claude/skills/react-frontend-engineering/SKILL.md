@@ -10,8 +10,10 @@ diagram, presentation table) and section 9 (browser tests).
 
 ## Scope limits
 
-- Visual identity, copy and layout are unchanged by the migration. The only new control is a cancel
-  button in the loading panel. Do not restyle.
+- Visual design follows `docs/design/DESIGN_SYSTEM.md` and the `ui-design-system` skill. Restyling is
+  allowed; changing behaviour (the hook, the API client, error codes and their messages) is not.
+- The browser-test contract (labels, button texts, banner titles, headings in `test/e2e/trip.spec.js`)
+  changes only deliberately, with the test updated in the same change and no assertion weakened.
 - No state library, no data-fetching library, no component library. Tailwind CSS 4 only.
 - Browser code imports `lib/domain` and `lib/client` only. Never `lib/infrastructure`,
   `lib/application` or `lib/http`.

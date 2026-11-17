@@ -1,49 +1,79 @@
-function formatDate(isoDate) {
-    // Trip dates are calendar days; format in UTC so the weekday never shifts.
-    return new Date(`${isoDate}T00:00:00Z`).toLocaleDateString(undefined, {
-        weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC',
-    });
+// The generated plan (DESIGN_SYSTEM 7.6, 7.8, 7.10, 7.11; UX_RESEARCH 7.5).
+// Presentational: the trip comes in, "Plan Another Trip" goes out. Model output is rendered as
+// text only (React escapes it); nothing here builds an href or src from it.
+//
+// Strict-mode contract with test/e2e/trip.spec.js: the destination, the traveller's name, the
+// budget figure and the AI notice each appear in exactly one element; "Day N" exists as a
+// heading only once per day (the navigator items are links, not headings).
+
+import DayNav from './DayNav.jsx';
+import { ArrowLeftIcon, CalendarIcon, InfoIcon, MapPinIcon, UserIcon } from './icons.jsx';
+import { RESULT_GRID, RESULT_MAIN, RESULT_SIDE, STOP_GRID, RAIL_LEFT, SHORT_DATE, LONG_DATE, formatDate } from './result-layout.js';
+
+const YEAR = new Intl.DateTimeFormat('en-GB', { year: 'numeric', timeZone: 'UTC' });
+
+/** "Fri 27 Nov – Sun 29 Nov 2026", with both years when the trip crosses New Year. */
+function dateRange(startIso, endIso) {
+    const startYear = formatDate(YEAR, startIso);
+    const endYear = formatDate(YEAR, endIso);
+    const start = formatDate(SHORT_DATE, startIso);
+    const end = `${formatDate(SHORT_DATE, endIso)} ${endYear}`;
+    if (startIso === endIso) return end;
+    return startYear === endYear ? `${start} – ${end}` : `${start} ${startYear} – ${end}`;
 }
 
 function formatBudget({ currency, estimated }) {
     try {
-        return new Intl.NumberFormat(undefined, { style: 'currency', currency, maximumFractionDigits: 0 }).format(estimated);
+        return new Intl.NumberFormat('en-GB', { style: 'currency', currency, maximumFractionDigits: 0 }).format(estimated);
     } catch {
-        return `${currency} ${estimated.toLocaleString()}`;
+        return `${currency} ${estimated.toLocaleString('en-GB')}`;
     }
 }
 
-function SummaryCard({ icon, label, children, tone }) {
+/**
+ * One item of the summary: a muted 16 px icon and small ink text, no border and no fill. On the
+ * result a pill always means a day-nav link (DESIGN_SYSTEM 7.6), so nothing here looks tappable.
+ */
+function Fact({ icon: Icon, label, className = '', children }) {
     return (
-        <div className={`bg-linear-to-br ${tone.bg} rounded-2xl p-6 motion-safe:hover:scale-105 transition-transform`}>
-            <div aria-hidden="true" className="text-3xl mb-3">{icon}</div>
-            <p className={`text-sm font-semibold ${tone.label} mb-1`}>{label}</p>
-            <p className={`text-lg font-bold ${tone.value} wrap-anywhere`}>{children}</p>
+        <div className={`flex min-w-0 ${className}`}>
+            <dt className="sr-only">{label}</dt>
+            <dd className="flex min-w-0 items-start gap-2 text-small text-ink">
+                <Icon size={16} className="mt-0.5 text-muted" />
+                <span className="min-w-0 wrap-anywhere tabular-nums">{children}</span>
+            </dd>
         </div>
     );
 }
 
-function Activity({ activity }) {
+function Stop({ stop, last }) {
     return (
-        <li className="flex items-start gap-4 p-4 bg-gray-50 rounded-xl hover:bg-purple-50 transition-colors">
-            <div className="shrink-0 w-16 h-16 bg-linear-to-br from-purple-400 to-pink-400 rounded-2xl flex items-center justify-center text-white font-bold text-sm shadow-lg text-center leading-tight px-1">
-                {activity.time || '—'}
-            </div>
-            <div className="flex-1 min-w-0">
-                <h5 className="font-bold text-lg text-gray-800 mb-1">{activity.title}</h5>
-                {activity.description && <p className="text-gray-600 text-sm mb-2">{activity.description}</p>}
-                {activity.location && (
-                    <p className="flex items-start text-sm text-purple-700">
-                        <span aria-hidden="true" className="mr-1">📍</span>
-                        <span className="font-medium min-w-0 wrap-anywhere">{activity.location}</span>
+        <li className={`relative ${STOP_GRID}`}>
+            {/* The rail: from this stop's dot to the next one. */}
+            {!last && <span aria-hidden="true" className={`absolute top-3 -bottom-9 w-px bg-hairline ${RAIL_LEFT}`} />}
+            <p className="pt-0.5 text-right text-small font-semibold text-ink tabular-nums">
+                {stop.time || (
+                    <>
+                        <span aria-hidden="true">—</span>
+                        <span className="sr-only">Time not set</span>
+                    </>
+                )}
+            </p>
+            <span aria-hidden="true" className="relative z-10 mx-auto mt-1.75 size-2.5 rounded-full border border-night bg-saffron" />
+            <div className="min-w-0 pl-2">
+                <h4 className="text-title text-ink wrap-anywhere">{stop.title}</h4>
+                {/* What the user reads is ink; the reference details under it step down to muted. */}
+                {stop.description && <p className="mt-1 text-ink wrap-anywhere">{stop.description}</p>}
+                {stop.location && (
+                    <p className="mt-2 flex items-start gap-1.5 text-small text-muted">
+                        <MapPinIcon size={16} className="mt-0.5" />
+                        <span className="min-w-0 wrap-anywhere">{stop.location}</span>
                     </p>
                 )}
-                {activity.notes && (
-                    <div className="mt-2 p-3 bg-yellow-50 border-l-4 border-yellow-400 rounded-lg">
-                        <p className="text-sm text-gray-700">
-                            <span className="font-bold"><span aria-hidden="true">💡 </span>Tip: </span>
-                            {activity.notes}
-                        </p>
+                {stop.notes && (
+                    <div className="mt-3 border-l-2 border-hairline pl-3">
+                        <p className="text-caption text-muted">Tip</p>
+                        <p className="mt-0.5 text-small text-ink wrap-anywhere">{stop.notes}</p>
                     </div>
                 )}
             </div>
@@ -51,89 +81,122 @@ function Activity({ activity }) {
     );
 }
 
+// A focused reading position (the title, a day heading) gets a ring that hugs the text with the
+// control radius, not a full-width box that reads like an input.
+const FOCUS_TARGET = 'w-fit max-w-full rounded-control';
+
+function Day({ day, id }) {
+    return (
+        // scroll-margin: the html scroll-padding (68) plus the mobile chip row (60) and 8.
+        <section id={id} aria-labelledby={`${id}-title`} className="scroll-mt-17 lg:scroll-mt-4">
+            <div className="border-b border-hairline pb-4">
+                <h3 id={`${id}-title`} tabIndex={-1} className={`text-h3-m text-ink lg:text-h3 ${FOCUS_TARGET}`}>
+                    Day {day.day}
+                </h3>
+                <p className="mt-1 text-small text-muted wrap-anywhere">
+                    <span className="tabular-nums">{formatDate(LONG_DATE, day.date)}</span>
+                    {day.location ? ` · ${day.location}` : ''}
+                </p>
+            </div>
+            <ol className="mt-6 space-y-6">
+                {day.activities.map((stop, i) => (
+                    <Stop key={i} stop={stop} last={i === day.activities.length - 1} />
+                ))}
+            </ol>
+        </section>
+    );
+}
+
 export default function ItineraryView({ trip, onReset }) {
-    const lastIndex = trip.days.length - 1;
+    const dayCount = trip.days.length;
+    const days = trip.days.map((day) => ({ day, id: `day-${day.day}` }));
+    const navItems = days.map(({ day, id }) => ({ id, day: day.day, label: formatDate(SHORT_DATE, day.date), area: day.location }));
+    // One-day trips have nothing to navigate: no navigator and no side column.
+    const hasNav = dayCount > 1;
+    const hasNotes = Boolean(trip.notes);
+
+    // Spacing above the days: after the chip row (24) at 375; after the notes (48) or at the top
+    // of the column (0) from `lg`; after the notes (32 / 48) when there is no navigator.
+    let daysGap = '';
+    if (hasNav) daysGap = hasNotes ? 'mt-6 lg:mt-12' : 'mt-6 lg:mt-0';
+    else if (hasNotes) daysGap = 'mt-8 lg:mt-12';
 
     return (
-        <article className="bg-white rounded-3xl shadow-2xl p-6 sm:p-8 md:p-12 mb-8" aria-labelledby="trip-title">
-            <header className="text-center mb-10 pb-8 border-b-2 border-purple-100">
-                <span aria-hidden="true" className="text-6xl mb-4 inline-block">🎉</span>
-                <h2 id="trip-title" className="text-3xl sm:text-4xl font-black bg-linear-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-3">
+        <article aria-labelledby="trip-title">
+            <header className="min-w-0">
+                {/* The focus target on success (Planner focuses it and scrolls it under the bar). */}
+                <h2 id="trip-title" tabIndex={-1} className={`scroll-mt-4 text-h2-m text-ink wrap-anywhere lg:text-h2 ${FOCUS_TARGET}`}>
                     {trip.title}
                 </h2>
+
+                {/* The one AI notice: directly under the title, before anything the model wrote. */}
+                <p className="mt-3 flex w-fit max-w-reading items-start gap-2 rounded-card bg-sunken px-3 py-2.5 text-small text-ink sm:mt-4 sm:px-4 sm:py-3">
+                    <InfoIcon size={16} className="mt-0.5 text-muted" />
+                    <span>AI-generated suggestions. Check opening hours, prices and bookings before you travel.</span>
+                </p>
+
+                {/* The summary as a meta list: the destination on its own line, the rest wrapping after it. */}
+                <dl className="mt-5 flex flex-wrap gap-x-6 gap-y-2 lg:mt-6">
+                    <Fact icon={MapPinIcon} label="Destination" className="basis-full">{trip.destination}</Fact>
+                    <Fact icon={CalendarIcon} label="Dates">
+                        {dateRange(trip.startDate, trip.endDate)} · {dayCount} {dayCount === 1 ? 'day' : 'days'}
+                    </Fact>
+                    <Fact icon={UserIcon} label="Traveller">{trip.createdBy}</Fact>
+                    {trip.budget && (
+                        <div className="flex min-w-0">
+                            <dt className="sr-only">Estimated budget</dt>
+                            <dd className="flex min-w-0 items-start gap-2 text-small text-ink">
+                                {/* The accent as an 8 px marker centred in a 16 px icon box; the figure stays ink. */}
+                                <span aria-hidden="true" className="mt-0.5 flex size-4 shrink-0 items-center justify-center">
+                                    <span className="size-2 bg-saffron ring-1 ring-night" />
+                                </span>
+                                <span className="min-w-0">
+                                    <span className="text-muted">Estimated budget </span>
+                                    <span className="font-semibold tabular-nums">{formatBudget(trip.budget)}</span>
+                                    <span className="text-muted"> for one traveller, excluding flights</span>
+                                </span>
+                            </dd>
+                        </div>
+                    )}
+                </dl>
             </header>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-                <SummaryCard icon="📍" label="Destination" tone={{ bg: 'from-purple-50 to-purple-100', label: 'text-purple-700', value: 'text-purple-900' }}>
-                    {trip.destination}
-                </SummaryCard>
-                <SummaryCard icon="📅" label={`Dates · ${trip.days.length} day${trip.days.length === 1 ? '' : 's'}`} tone={{ bg: 'from-pink-50 to-pink-100', label: 'text-pink-700', value: 'text-pink-900' }}>
-                    {trip.startDate} → {trip.endDate}
-                </SummaryCard>
-                <SummaryCard icon="👤" label="Traveller" tone={{ bg: 'from-blue-50 to-blue-100', label: 'text-blue-700', value: 'text-blue-900' }}>
-                    {trip.createdBy}
-                </SummaryCard>
-                {trip.budget && (
-                    <SummaryCard icon="💰" label="Est. budget (excl. flights)" tone={{ bg: 'from-green-50 to-green-100', label: 'text-green-700', value: 'text-green-900' }}>
-                        {formatBudget(trip.budget)}
-                    </SummaryCard>
+            {/* Source order: notes, navigator, days. At 375 the notes come before the sticky chip
+                row; from `lg` the navigator takes columns 1-3 beside both. The navigator is a
+                direct child of this box, so it stays sticky for the whole plan. */}
+            <div className={`mt-8 lg:mt-12 ${hasNav ? RESULT_GRID : ''}`}>
+                {hasNotes && (
+                    <section aria-labelledby="notes-title" className={`min-w-0 max-w-reading ${hasNav ? `${RESULT_MAIN} lg:row-start-1` : ''}`}>
+                        <h3 id="notes-title" className="text-small font-semibold text-muted">Good to know</h3>
+                        <p className="mt-1 text-lead-m text-ink wrap-anywhere lg:text-lead">{trip.notes}</p>
+                    </section>
                 )}
-            </div>
 
-            {trip.notes && (
-                <section className="bg-linear-to-br from-amber-50 to-orange-50 rounded-2xl p-6 sm:p-8 mb-10 border-2 border-amber-200">
-                    <div className="flex items-start gap-4">
-                        <span aria-hidden="true" className="text-4xl">ℹ️</span>
-                        <div className="flex-1">
-                            <h3 className="text-2xl font-bold text-gray-800 mb-3">About Your Destination</h3>
-                            <p className="text-gray-700 leading-relaxed text-lg">{trip.notes}</p>
-                        </div>
+                {hasNav && (
+                    <DayNav
+                        days={navItems}
+                        className={`${RESULT_SIDE} ${hasNotes ? 'mt-6 lg:row-span-2' : ''} lg:row-start-1 lg:mt-0`}
+                    />
+                )}
+
+                <div className={`min-w-0 max-w-reading ${hasNav ? `${RESULT_MAIN} ${hasNotes ? 'lg:row-start-2' : 'lg:row-start-1'}` : ''}`}>
+                    <div className={`space-y-12 ${daysGap}`}>
+                        {days.map(({ day, id }) => (
+                            <Day key={id} day={day} id={id} />
+                        ))}
                     </div>
-                </section>
-            )}
 
-            <section className="space-y-6" aria-labelledby="daily-heading">
-                <h3 id="daily-heading" className="text-3xl font-bold text-gray-800 mb-6 flex items-center">
-                    <span aria-hidden="true" className="mr-3">📋</span>
-                    Your Daily Adventure
-                </h3>
-
-                {trip.days.map((day, index) => (
-                    <div key={day.date} className="bg-linear-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-3xl shadow-xl overflow-hidden">
-                        <div className="bg-white/10 backdrop-blur-sm text-white p-6">
-                            <div className="flex items-center justify-between gap-4">
-                                <div className="min-w-0">
-                                    <h4 className="text-3xl font-black mb-1">Day {day.day}</h4>
-                                    <p className="text-lg opacity-90 wrap-anywhere">
-                                        {formatDate(day.date)}{day.location ? ` • ${day.location}` : ''}
-                                    </p>
-                                </div>
-                                <div aria-hidden="true" className="text-5xl opacity-80 shrink-0">
-                                    {index === 0 ? '🌅' : index === lastIndex ? '🌃' : '☀️'}
-                                </div>
-                            </div>
-                        </div>
-                        <ol className="bg-white p-4 sm:p-6 space-y-4">
-                            {day.activities.map((activity, i) => (
-                                <Activity key={i} activity={activity} />
-                            ))}
-                        </ol>
+                    <div className="mt-12 border-t border-hairline pt-8">
+                        <button
+                            type="button"
+                            onClick={onReset}
+                            className="inline-flex h-11 items-center gap-2 rounded-control border border-control bg-surface px-5 text-body font-semibold text-ink transition-colors duration-150 ease-standard hover:bg-sunken"
+                        >
+                            <ArrowLeftIcon size={20} />
+                            Plan Another Trip
+                        </button>
                     </div>
-                ))}
-            </section>
-
-            <p className="mt-8 text-sm text-gray-500 text-center">
-                AI-generated suggestions. Check opening hours, prices and bookings before you travel.
-            </p>
-
-            <div className="mt-8 text-center">
-                <button
-                    type="button"
-                    onClick={onReset}
-                    className="px-8 py-4 bg-linear-to-r from-gray-600 to-gray-800 text-white rounded-xl font-bold motion-safe:hover:scale-105 transition-transform focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-gray-400"
-                >
-                    ← Plan Another Trip
-                </button>
+                </div>
             </div>
         </article>
     );
