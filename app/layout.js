@@ -1,31 +1,32 @@
-import { Geist, Geist_Mono } from "next/font/google";
+import { Manrope } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// One family, self-hosted at build time (CSP font-src 'self'). The variable goes on <html>
+// because Tailwind's preflight sets font-family there (DESIGN_SYSTEM section 3).
+const manrope = Manrope({
   subsets: ["latin"],
+  display: "swap",
+  variable: "--font-manrope",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+const DESCRIPTION =
+  "Day-by-day travel plans for trips up to 14 days, with timed stops and an estimated budget. No account needed.";
 
 export const metadata = {
-  title: "AI Travel Planner",
-  description: "Plan your perfect trip with a personalised AI-generated itinerary. Enter your destination and travel dates to get started.",
-  keywords: ["travel planner", "AI itinerary", "trip planner", "travel"],
+  title: "AI Travel Planner · Day-by-day travel plans",
+  description: DESCRIPTION,
+  keywords: ["travel planner", "itinerary", "trip planner", "travel"],
   openGraph: {
-    title: "AI Travel Planner",
-    description: "Get a personalised AI-generated travel itinerary in seconds.",
+    title: "AI Travel Planner · Day-by-day travel plans",
+    description: DESCRIPTION,
     type: "website",
   },
 };
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+    <html lang="en" className={manrope.variable}>
+      <body className="font-sans antialiased">
         {children}
       </body>
     </html>

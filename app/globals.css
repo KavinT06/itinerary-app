@@ -1,20 +1,240 @@
 @import "tailwindcss";
 
-/* The UI is a light-only design; tell the browser so native controls (date pickers) match. */
-:root {
-  color-scheme: light;
-  --background: #ffffff;
-  --foreground: #171717;
+/* Design tokens: docs/design/DESIGN_SYSTEM.md (Dusk Horizon). Components use these only. */
+@theme {
+  /* Only these tokens exist: Tailwind's default palette, radii and shadows are removed. */
+  --color-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+
+  /* Brand */
+  --color-night: #0D1530;
+  --color-night-2: #1A2550;
+  --color-saffron: #F6B84B;
+  --color-saffron-hover: #F7C366;
+  --color-saffron-disabled: #FCE6C0;
+  --color-budget-chip: #FDF2DF;
+
+  /* Neutrals */
+  --color-paper: #F6F2EA;
+  --color-surface: #FFFFFF;
+  --color-sunken: #EFEAE0;
+  --color-ink: #131A2C;
+  --color-muted: #575E70;
+  --color-hairline: #E3DCCF;
+  --color-control: #8A8476;
+  --color-on-night: #F6F2EA;
+  --color-on-night-muted: #A9B2CB;
+
+  /* Semantic */
+  --color-warning-bg: #FCEFD2;
+  --color-warning-ink: #7A4A00;
+  --color-danger-bg: #FCE9E6;
+  --color-danger-ink: #A21F1A;
+  --color-focus: #3D74F0;
+
+  /* Radii */
+  --radius-control: 0.5rem;  /* 8 */
+  --radius-card: 0.75rem;    /* 12 */
+  --radius-panel: 1rem;      /* 16 */
+  --radius-block: 1.25rem;   /* 20 */
+
+  /* Elevation */
+  --shadow-float: 0 6px 24px -8px rgb(13 21 48 / 0.12);
+  --shadow-raised: 0 16px 40px -20px rgb(13 21 48 / 0.30);
+  --shadow-glass: 0 12px 32px -12px rgb(5 8 20 / 0.55);
+
+  /* Layout */
+  --container-content: 75rem;  /* 1200 */
+  --container-reading: 45rem;  /* 720 */
+  --container-copy: 28rem;     /* 448 */
+
+  /* Type scale (mobile tokens end in -m; use e.g. `text-display-m lg:text-display`) */
+  --text-display: 3.5rem;
+  --text-display--line-height: 3.75rem;
+  --text-display--letter-spacing: -0.025em;
+  --text-display--font-weight: 600;
+  --text-display-m: 2.5rem;
+  --text-display-m--line-height: 2.75rem;
+  --text-display-m--letter-spacing: -0.025em;
+  --text-display-m--font-weight: 600;
+
+  --text-h1: 3rem;
+  --text-h1--line-height: 3.5rem;
+  --text-h1--letter-spacing: -0.02em;
+  --text-h1--font-weight: 600;
+  --text-h1-m: 2.0625rem;
+  --text-h1-m--line-height: 2.5rem;
+  --text-h1-m--letter-spacing: -0.02em;
+  --text-h1-m--font-weight: 600;
+
+  --text-h2: 2.0625rem;
+  --text-h2--line-height: 2.5rem;
+  --text-h2--letter-spacing: -0.02em;
+  --text-h2--font-weight: 600;
+  --text-h2-m: 1.75rem;
+  --text-h2-m--line-height: 2.125rem;
+  --text-h2-m--letter-spacing: -0.02em;
+  --text-h2-m--font-weight: 600;
+
+  --text-h3: 1.4375rem;
+  --text-h3--line-height: 1.875rem;
+  --text-h3--letter-spacing: -0.015em;
+  --text-h3--font-weight: 600;
+  --text-h3-m: 1.1875rem;
+  --text-h3-m--line-height: 1.625rem;
+  --text-h3-m--letter-spacing: -0.015em;
+  --text-h3-m--font-weight: 600;
+
+  --text-title: 1rem;
+  --text-title--line-height: 1.5rem;
+  --text-title--letter-spacing: -0.01em;
+  --text-title--font-weight: 600;
+
+  --text-lead: 1.1875rem;
+  --text-lead--line-height: 1.875rem;
+  --text-lead--letter-spacing: -0.01em;
+  --text-lead--font-weight: 500;
+  --text-lead-m: 1rem;
+  --text-lead-m--line-height: 1.625rem;
+  --text-lead-m--letter-spacing: -0.01em;
+  --text-lead-m--font-weight: 500;
+
+  --text-body: 1rem;
+  --text-body--line-height: 1.5rem;
+  --text-body--font-weight: 500;
+
+  --text-small: 0.875rem;
+  --text-small--line-height: 1.25rem;
+  --text-small--font-weight: 500;
+
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1rem;
+  --text-caption--letter-spacing: 0.01em;
+  --text-caption--font-weight: 600;
+
+  /* Motion */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --animate-rise: rise 700ms var(--ease-out-expo) both;
+  --animate-fade: fade 200ms var(--ease-standard) both;
+  --animate-pulse-soft: pulse-soft 1.6s var(--ease-standard) infinite;
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes pulse-soft {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.55; }
+  }
 }
 
+/* The font: next/font sets --font-manrope on <html>; `inline` resolves it there. */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
+@layer base {
+  :root { color-scheme: light; } /* native date pickers match the light content area */
+  html { scroll-padding-top: 68px; }
+  body {
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+    font-weight: 500;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  /* No lone last words: balanced headings and leads, "pretty" wrapping for body copy. */
+  h1, h2, h3, h4 { text-wrap: balance; }
+  p, li, dd { text-wrap: pretty; }
+  :focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, ::before, ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* The hero's background, grid and isometric cards (DESIGN_SYSTEM 7.12). Decorative only. */
+@layer components {
+  .hero-band {
+    background:
+      radial-gradient(70% 55% at 50% 118%, color-mix(in srgb, var(--color-saffron) 15%, transparent), transparent 72%),
+      linear-gradient(180deg, var(--color-night-2) 0%, var(--color-night) 60%);
+  }
+
+  .hero-grid {
+    position: absolute;
+    inset: auto -50% -10% -50%;
+    height: 70%;
+    background-image:
+      repeating-linear-gradient(90deg, color-mix(in srgb, var(--color-on-night) 6%, transparent) 0 1px, transparent 1px 64px),
+      repeating-linear-gradient(0deg, color-mix(in srgb, var(--color-on-night) 6%, transparent) 0 1px, transparent 1px 64px);
+    transform: perspective(900px) rotateX(62deg);
+    transform-origin: 50% 100%;
+    mask-image: radial-gradient(50% 80% at 50% 100%, #000 30%, transparent 75%);
+    -webkit-mask-image: radial-gradient(50% 80% at 50% 100%, #000 30%, transparent 75%);
+    pointer-events: none;
+  }
+
+  /* Three day cards in isometric projection. */
+  .iso-plane {
+    transform: rotate(-30deg) skewX(30deg) scaleY(0.866);
+    transform-origin: 50% 50%;
+  }
+
+  /* Glass cards: night-2 at 85% so they separate from the band, and a 1 px top and left edge
+     highlight at 20% so each card has a crisp edge against the navy. */
+  .glass-card {
+    background: color-mix(in srgb, var(--color-night-2) 85%, var(--color-night));
+    border-radius: var(--radius-panel);
+    box-shadow:
+      inset 1px 1px 0 color-mix(in srgb, var(--color-on-night) 20%, transparent),
+      var(--shadow-glass);
+  }
+  @supports (backdrop-filter: blur(1px)) {
+    .glass-card {
+      background: color-mix(in srgb, var(--color-night-2) 85%, transparent);
+      backdrop-filter: blur(10px);
+    }
+  }
+
+  /* The condensed nav: blur only where it is supported; the fill passes contrast alone. */
+  .nav-condensed {
+    background: color-mix(in srgb, var(--color-paper) 85%, transparent);
+  }
+  @supports (backdrop-filter: blur(1px)) {
+    .nav-condensed {
+      backdrop-filter: blur(16px) saturate(1.4);
+    }
+  }
+
+  /* The mobile day-chip row scrolls on its own; its scrollbar would sit under the chips. */
+  .no-scrollbar { scrollbar-width: none; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+
+  /* The joined date range: each half draws its focus ring inside the shared border. */
+  .date-half:focus-visible {
+    outline-offset: -3px;
+  }
+  /* Two equal halves at 375. From `sm` the pair spans two of the form's three columns, and the
+     left half takes one column plus the whole gutter (50% + 8 px), so Return starts exactly where
+     City starts in the row above. */
+  .date-range { grid-template-columns: 1fr 1fr; }
+  @media (width >= 40rem) {
+    .date-range { grid-template-columns: calc(50% + 0.5rem) 1fr; }
+  }
 }
