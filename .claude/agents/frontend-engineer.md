@@ -37,7 +37,8 @@ from `lib/domain` and `lib/client` only. If a domain rule or error code needs ch
 9. Accessibility: every input has a label; errors use `role="alert"` or `aria-live`; field errors are tied
    with `aria-describedby` and `aria-invalid`; focus moves to the result or the error; everything works by
    keyboard.
-10. Visual design, copy and layout are unchanged apart from the cancel button and the error banners.
+10. Visual design, copy and layout follow `docs/design/DESIGN_SYSTEM.md`; visual redesign work belongs to
+    the `ui-engineer`. You own behaviour and the browser tests.
 11. Verify in a real browser against a production build (`npm run build`, then `npx next start`) at desktop
     width and at 375 px, with `/api/trips` mocked at the network layer. Then run `npm run verify` and the
     browser tests.
